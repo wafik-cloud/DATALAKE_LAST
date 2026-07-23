@@ -1,0 +1,110 @@
+name: datalake-last
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: datalake-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-datalake}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-datalake}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datalake} -d ${POSTGRES_DB:-datalake}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
+    container_name: datalake-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_HOST_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    container_name: datalake-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET:-pelagic-data}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\"; do
+        echo 'Waiting for MinIO...';
+        sleep 2;
+      done;
+      mc mb --ignore-existing local/$$MINIO_BUCKET;
+      mc version enable local/$$MINIO_BUCKET || true;
+      if [ -n \"$$MINIO_ACCESS_KEY\" ] && [ \"$$MINIO_ACCESS_KEY\" != \"CHANGE_ME\" ]; then
+        mc admin user add local \"$$MINIO_ACCESS_KEY\" \"$$MINIO_SECRET_KEY\" || true;
+        mc admin policy attach local readwrite --user \"$$MINIO_ACCESS_KEY\" || true;
+      fi;
+      echo 'MinIO init done.';
+      exit 0;
+      "
+    networks:
+      - app-network
+
+  api:
+    build: ./apps/api
+    container_name: datalake-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MINIO_ENDPOINT: http://minio:9000
+    ports:
+      - "${API_PORT:-5001}:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # web:
+  #   build: ./apps/web
+  #   container_name: datalake-web
+  #   env_file: .env
+  #   ports:
+  #     - "${WEB_PORT:-5173}:5173"
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:

@@ -1,0 +1,10 @@
+{
+  "name": "@datalake-last/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DATALAKE_LAST — interface web",
+  "scripts": {
+    "dev": "echo \"Frontend — phase 7\"",
+    "build": "echo \"Frontend — phase 7\""
+  }
+}

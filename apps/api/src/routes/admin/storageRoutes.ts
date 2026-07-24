@@ -2,8 +2,15 @@ import { Router } from 'express';
 import { env } from '../../config/env';
 import { minioStorageService } from '../../services/minioStorageService';
 import { requireAdmin } from '../../middleware/requireAdmin';
+import { isAllowedObjectKey } from '../../utils/objectKeys';
+import { getJobById } from '../../repositories/pelagicImportJobRepository';
+import { writeAuditLog } from '../../repositories/auditLogRepository';
 
 const router = Router();
+
+function paramId(value: string | string[]): string {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 router.use(requireAdmin);
 
@@ -66,6 +73,46 @@ router.get('/objects', async (req, res) => {
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Impossible de lister les objets',
     });
+  }
+});
+
+router.get('/objects/download', async (req, res) => {
+  try {
+    const key = typeof req.query.key === 'string' ? req.query.key : '';
+    if (!key || !isAllowedObjectKey(key)) {
+      return res.status(400).json({ error: 'Clé objet invalide' });
+    }
+    const url = await minioStorageService.generatePresignedDownloadUrl(key, 900);
+    res.json({ key, url, expiresInSeconds: 900 });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'URL temporaire impossible' });
+  }
+});
+
+router.delete('/objects', async (req, res) => {
+  try {
+    const key = typeof req.query.key === 'string' ? req.query.key : '';
+    if (!key || !isAllowedObjectKey(key)) {
+      return res.status(400).json({ error: 'Clé objet invalide' });
+    }
+    await minioStorageService.deleteObject(key);
+    await writeAuditLog('STORAGE_DELETE', req.header('X-User') || 'admin', key);
+    res.json({ message: 'Objet supprimé', key });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Suppression impossible' });
+  }
+});
+
+router.get('/objects/:id', async (req, res) => {
+  try {
+    const job = await getJobById(paramId(req.params.id));
+    if (!job?.minioObjectKey) {
+      return res.status(404).json({ error: 'Objet associé introuvable' });
+    }
+    const metadata = await minioStorageService.getObjectMetadata(job.minioObjectKey);
+    res.json({ job, metadata });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Détail objet impossible' });
   }
 });
 

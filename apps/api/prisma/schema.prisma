@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PelagicExportType {
+  trips
+  points
+}
+
+enum PelagicJobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+model PelagicImportJob {
+  id              String            @id @default(cuid())
+  jobUuid         String            @unique @default(uuid()) @map("job_uuid")
+  exportType      PelagicExportType @map("export_type")
+  dateFrom        String            @map("date_from")
+  dateTo          String            @map("date_to")
+  imeis           String[]          @default([])
+  tags            String[]          @default([])
+  deviceInfo      Boolean           @default(true) @map("device_info")
+  withLastSeen    Boolean           @default(true) @map("with_last_seen")
+  includeErrant   Boolean           @default(false) @map("include_errant")
+  status          PelagicJobStatus  @default(PENDING)
+  startedAt       DateTime?         @map("started_at")
+  completedAt     DateTime?         @map("completed_at")
+  failedAt        DateTime?         @map("failed_at")
+  minioBucket     String?           @map("minio_bucket")
+  minioObjectKey  String?           @map("minio_object_key")
+  fileName        String?           @map("file_name")
+  fileSize        BigInt?           @map("file_size")
+  checksumSha256  String?           @map("checksum_sha256")
+  httpStatus      Int?              @map("http_status")
+  attemptCount    Int               @default(0) @map("attempt_count")
+  errorMessage    String?           @map("error_message")
+  rowCount        Int?              @map("row_count")
+  createdBy       String?           @map("created_by")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([exportType, dateFrom, dateTo])
+  @@map("pelagic_import_jobs")
+}
+
+model PelagicIntegrationSettings {
+  id             String   @id @default("default")
+  syncEnabled    Boolean  @default(true) @map("sync_enabled")
+  syncCron       String   @default("0 2 * * *") @map("sync_cron")
+  syncTime       String   @default("01:00") @map("sync_time")
+  syncIntervalDays Int    @default(1) @map("sync_interval_days")
+  syncTimezone   String   @default("Africa/Casablanca") @map("sync_timezone")
+  defaultImeis   String[] @default([]) @map("default_imeis")
+  defaultTags    String[] @default([]) @map("default_tags")
+  deviceInfo     Boolean  @default(true) @map("device_info")
+  withLastSeen   Boolean  @default(true) @map("with_last_seen")
+  includeErrant  Boolean  @default(false) @map("include_errant")
+  retentionDays  Int?     @map("retention_days")
+  lastSyncAt     DateTime? @map("last_sync_at")
+  lastSyncStatus String?  @map("last_sync_status")
+  updatedBy      String?  @map("updated_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("pelagic_integration_settings")
+}
+
+model PelagicMonthPlan {
+  id           String   @id @default(cuid())
+  year         Int
+  month        Int
+  intervalDays Int      @default(1) @map("interval_days")
+  updatedBy    String?  @map("updated_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([year, month])
+  @@map("pelagic_month_plans")
+}
+
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  actor     String?
+  details   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("admin_audit_logs")
+}

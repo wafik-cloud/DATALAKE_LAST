@@ -16,10 +16,15 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datalake} -d ${POSTGRES_DB:-datalake}"]
+      test:
+        [
+          "CMD-SHELL",
+          "PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -c 'SELECT 1' >/dev/null",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
 
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
@@ -37,11 +42,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live || exit 1"]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 15s
+      start_period: 20s
 
   minio-init:
     image: minio/mc:RELEASE.2025-04-16T18-13-26Z
@@ -79,27 +84,32 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
       MINIO_ENDPOINT: http://minio:9000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-datalake}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-datalake}
     ports:
       - "${API_PORT:-5001}:5001"
     depends_on:
       postgres:
         condition: service_healthy
       minio:
-        condition: service_healthy
+        condition: service_started
     networks:
       - app-network
 
-  # web:
-  #   build: ./apps/web
-  #   container_name: datalake-web
-  #   env_file: .env
-  #   ports:
-  #     - "${WEB_PORT:-5173}:5173"
-  #   depends_on:
-  #     - api
-  #   networks:
-  #     - app-network
+  web:
+    build: ./apps/web
+    container_name: datalake-web
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${API_URL:-http://localhost:5001}
+    ports:
+      - "${WEB_PORT:-5242}:5173"
+    depends_on:
+      - api
+    networks:
+      - app-network
 
 networks:
   app-network:

@@ -1,10 +1,26 @@
 {
   "name": "@datalake-last/web",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "DATALAKE_LAST — interface web",
+  "type": "module",
   "scripts": {
-    "dev": "echo \"Frontend — phase 7\"",
-    "build": "echo \"Frontend — phase 7\""
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5173"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "lucide-react": "^0.542.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.8.2",
+    "sweetalert2": "^11.22.2"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
+    "typescript": "^5.9.2",
+    "vite": "^6.3.5"
   }
 }

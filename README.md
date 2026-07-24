@@ -15,29 +15,27 @@ Projet créé **from scratch** — indépendant de `inrh_data_platform-last`.
 | Planification | `node-cron` + fuseau `Africa/Casablanca` |
 | Auth admin | JWT session/API (Keycloak optionnel plus tard) |
 
-## Démarrage rapide (infrastructure + API)
+## Démarrage rapide (infrastructure + API + UI)
 
 ```bash
 cd /Users/M.WAFIK/CSID_projects/DATALAKE_LAST
 cp .env.example .env
-# Éditer .env : mots de passe + ADMIN_API_KEY
+# Éditer .env : mots de passe + ADMIN_API_KEY + PELAGIC_API_TOKEN/SECRET
 
-docker compose up -d postgres minio minio-init api
-docker compose ps
+# Détecte un port libre pour l'interface web et démarre tout
+bash scripts/start.sh
 ```
 
-Test :
+Ou manuellement :
 
 ```bash
-curl http://localhost:5001/health
-curl -H "X-Admin-Key: VOTRE_CLE" http://localhost:5001/api/admin/storage/test
+bash scripts/assign-web-port.sh   # scanne 5174–5300, met à jour .env
+docker compose up -d --build
 ```
 
-Développement local API :
-
-```bash
-cd apps/api && npm install && npm run dev
-```
+L'URL de l'UI s'affiche à la fin (variable `WEB_PORT` dans `.env`).
+- **API** : http://localhost:5001
+- **Console MinIO** : http://localhost:9001
 
 ## Structure du dépôt (cible)
 

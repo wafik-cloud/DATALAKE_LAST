@@ -1,29 +1,38 @@
 {
   "name": "@datalake-last/api",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "DATALAKE_LAST API — MinIO + Pelagic Data",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/index.js",
-    "test": "echo \"Tests — phase 8\" && exit 0"
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "engines": {
     "node": ">=22"
   },
   "dependencies": {
+    "@prisma/client": "^6.14.0",
+    "axios": "^1.11.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
-    "minio": "^8.0.6"
+    "minio": "^8.0.6",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.0",
+    "prisma": "^6.14.0",
     "tsx": "^4.20.4",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

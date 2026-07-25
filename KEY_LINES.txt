@@ -1,0 +1,9 @@
+## step1
+## step7_ps
+## step7_health
+## step7_web
+## final_health
+## Accessibility
+- API http://172.16.10.101:5001/health: ``
+- **API reachable:** NO/UNKNOWN
+- **Web reachable:** NO/UNKNOWN

@@ -1,0 +1,17 @@
+FILE step1 bytes=23
+srv-datalake-prod\ninrh\n
+---
+FILE step2_docker bytes=0
+
+---
+FILE step3 bytes=0
+
+---
+FILE step4 bytes=60
+Already up to date.\nbash: line 1: docker: command not found\n
+---
+FILE step5 MISSING
+FILE step6 MISSING
+FILE step7_ps MISSING
+FILE step7_health MISSING
+FILE step7_web MISSING

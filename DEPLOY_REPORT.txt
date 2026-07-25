@@ -1,0 +1,35 @@
+=== STEP 1 Connectivity ==='
+  === STEP 1 Connectivity ==='
+  =
+=== STEP 2 Docker ==='
+  === STEP 2 Docker ==='
+  =
+=== STEP 3 SCP .env ==='
+  === STEP 3 SCP .env ==='
+  =
+=== STEP 4 Deploy ==='
+  === STEP 4 Deploy ==='
+  =
+=== STEP 5 Migrations ==='
+  === STEP 5 Migrations ==='
+  =
+=== STEP 6 Firewall ==='
+  === STEP 6 Firewall ==='
+  =
+=== STEP 7 Verify ==='
+  === STEP 7 Verify ==='
+  =
+
+--- verify file 69b4638b ---
+srv-datalake-prod
+inrh
+bash: line 1: docker: command not found
+-rw-rw-r-- 1 inrh inrh 1731 Jul 24 01:01 /home/inrh/DATALAKE_LAST/.env
+--- verify file d0d1a787 ---
+sg: group 'docker' does not exist
+--- verify file d2b075cb ---
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+curl: (7) Failed to connect to 172.16.10.101 port 5174 after 56 ms: Couldn't connect to server

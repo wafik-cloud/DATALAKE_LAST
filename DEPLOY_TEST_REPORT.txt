@@ -1,0 +1,40 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	CHAT_OUTPUT.txt
+	DEPLOY_DIGEST.txt
+	DEPLOY_REPORT.md
+	DEPLOY_REPORT.txt
+	DEPLOY_REPORT_807_BYTES
+	DEPLOY_TEST_REPORT.txt
+	DIAG.txt
+	DIAG2.txt
+	FLAG_STEP_*_FAIL
+	FULL_DEPLOY_OUTPUT.txt
+	FULL_OUTPUT_270_BYTES
+	KEY_LINES.txt
+	OUT_step1.txt
+	OUT_step2.txt
+	OUT_step2a.txt
+	OUT_step2b.txt
+	OUT_step2c.txt
+	OUT_step3.txt
+	OUT_step4.txt
+	OUT_step5.txt
+	OUT_step6.txt
+	OUT_step7_health.txt
+	OUT_step7_ps.txt
+	OUT_step7_web.txt
+	PARENT_DEPLOY_REPORT.txt
+	SSH_OK
+	deploy-status-summary.txt
+	deploy-status.json
+	deploy_markers/
+	deploy_results/
+	ec.txt
+	scripts/deploy-prod.sh
+	scripts/install-and-run.sh
+
+nothing added to commit but untracked files present (use "git add" to track)

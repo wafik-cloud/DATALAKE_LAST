@@ -1,0 +1,90 @@
+{
+  "steps": {
+    "step1_srv_datalake": {
+      "exit": 0,
+      "ok": true
+    },
+    "step1_root": {
+      "exit": 255,
+      "ok": false
+    },
+    "step2_docker_version": {
+      "exit": 127,
+      "ok": false
+    },
+    "step2_install_sudo": {
+      "exit": 1,
+      "ok": false
+    },
+    "step2_install_root": {
+      "exit": 255,
+      "ok": false
+    },
+    "step2_install_jump": {
+      "exit": 255,
+      "ok": false
+    },
+    "step2_docker_after": {
+      "exit": 1,
+      "ok": false
+    },
+    "step3_scp": {
+      "exit": 0,
+      "ok": true
+    },
+    "step4_compose": {
+      "exit": 127,
+      "ok": false
+    },
+    "step4_compose_sg": {
+      "exit": 1,
+      "ok": false
+    },
+    "step5_migrate_sg": {
+      "exit": 1,
+      "ok": false
+    },
+    "step5_migrate": {
+      "exit": 127,
+      "ok": false
+    },
+    "step6_ufw": {
+      "exit": 1,
+      "ok": false
+    },
+    "step7_ps": {
+      "exit": 1,
+      "ok": false
+    },
+    "step7_health": {
+      "exit": 7,
+      "ok": false
+    },
+    "step7_frontend": {
+      "exit": 0,
+      "ok": true
+    }
+  },
+  "outputs": {
+    "step1_srv_datalake": "srv-datalake-prod\ninrh\n",
+    "step1_root": "root@172.16.10.101: Permission denied (publickey,password).\n",
+    "step2_docker_version": "bash: line 1: docker: command not found\n",
+    "step2_install_sudo": "sudo: a password is required\n",
+    "step2_install_root": "root@172.16.10.101: Permission denied (publickey,password).\n",
+    "step2_install_jump": "Host key verification failed.\n",
+    "step2_docker_after": "bash: line 1: docker: command not found\nsg: group 'docker' does not exist\n",
+    "step3_scp": "",
+    "step4_compose": "Already up to date.\nbash: line 1: docker: command not found\nFrom https://github.com/wafik-cloud/DATALAKE_LAST\n * branch            main       -> FETCH_HEAD\n",
+    "step4_compose_sg": "sg: group 'docker' does not exist\n",
+    "step5_migrate_sg": "sg: group 'docker' does not exist\n",
+    "step5_migrate": "bash: line 1: docker: command not found\n",
+    "step6_ufw": "sudo: a password is required\nsudo: a password is required\n",
+    "step7_ps": "sg: group 'docker' does not exist\n",
+    "step7_health": "",
+    "step7_frontend": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\n  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\n  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\ncurl: (7) Failed to connect to 172.16.10.101 port 5174 after 29 ms: Couldn't connect to server\n"
+  },
+  "accessibility": {
+    "api_5001": "fail",
+    "web_5174": "fail"
+  }
+}

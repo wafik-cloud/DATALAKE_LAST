@@ -1,0 +1,52 @@
+=== who/host ===
+srv-datalake-prod
+inrh
+uid=1000(inrh) gid=1000(inrh) groups=1000(inrh),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),101(lxd)
+inrh adm cdrom sudo dip plugdev lxd
+=== dir ===
+total 40
+drwxr-x--- 6 inrh inrh 4096 Jul 24 00:56 .
+drwxr-xr-x 3 root root 4096 Apr 17 15:19 ..
+-rw------- 1 inrh inrh  518 Jul 24 00:46 .bash_history
+-rw-r--r-- 1 inrh inrh  220 Mar 31  2024 .bash_logout
+-rw-r--r-- 1 inrh inrh 3771 Mar 31  2024 .bashrc
+drwx------ 2 inrh inrh 4096 Apr 17 18:12 .cache
+drwxrwxr-x 6 inrh inrh 4096 Jul 24 00:56 DATALAKE_LAST
+drwxrwxr-x 3 inrh inrh 4096 Jul 24 00:13 .local
+-rw-r--r-- 1 inrh inrh  807 Mar 31  2024 .profile
+drwx------ 2 inrh inrh 4096 Apr 17 15:30 .ssh
+-rw-r--r-- 1 inrh inrh    0 Apr 17 18:12 .sudo_as_admin_successful
+total 44
+drwxrwxr-x 6 inrh inrh 4096 Jul 24 00:56 .
+drwxr-x--- 6 inrh inrh 4096 Jul 24 00:56 ..
+drwxrwxr-x 4 inrh inrh 4096 Jul 24 00:56 apps
+-rw-rw-r-- 1 inrh inrh 3334 Jul 24 00:56 docker-compose.yml
+drwxrwxr-x 2 inrh inrh 4096 Jul 24 00:56 docs
+-rw-rw-r-- 1 inrh inrh 1731 Jul 24 01:02 .env
+-rw-rw-r-- 1 inrh inrh 1959 Jul 24 00:56 .env.example
+drwxrwxr-x 8 inrh inrh 4096 Jul 24 01:02 .git
+-rw-rw-r-- 1 inrh inrh  371 Jul 24 00:56 .gitignore
+-rw-rw-r-- 1 inrh inrh 2337 Jul 24 00:56 README.md
+drwxrwxr-x 2 inrh inrh 4096 Jul 24 00:56 scripts
+=== docker ===
+bash: line 1: docker: command not found
+sg: group 'docker' does not exist
+=== compose file ===
+yes
+name: datalake-last
+
+services:
+  postgres:
+    image: postgres:16-alpine
+=== git ===
+## main...origin/main
+ M scripts/assign-web-port.sh
+ M scripts/start.sh
+origin	https://github.com/wafik-cloud/DATALAKE_LAST.git (fetch)
+origin	https://github.com/wafik-cloud/DATALAKE_LAST.git (push)
+=== step4 log tail ===
+START 2026-07-24T02:03:42+01:00
+sg: group 'docker' does not exist
+EXIT 1
+sg: group 'docker' does not exist
+END 2026-07-24T02:03:44+01:00

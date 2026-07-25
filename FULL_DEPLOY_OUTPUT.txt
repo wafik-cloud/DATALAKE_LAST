@@ -1,0 +1,43 @@
+=== STEP 1 ===
+srv-datalake-prod
+inrh
+
+=== STEP 2 docker ===
+
+=== STEP 3 scp ===
+
+=== STEP 4 deploy ===
+Already up to date.
+bash: line 1: docker: command not found
+
+=== STEP 5 migrate ===
+
+=== STEP 6 ufw ===
+
+=== STEP 7 ps ===
+
+=== STEP 7 health ===
+
+=== STEP 7 web ===
+=== RERUN 2026-07-24T02:06:18+01:00 STEP1 ===
+srv-datalake-prod
+inrh
+=== RERUN STEP2 ===
+bash: line 1: docker: command not found
+sg: group 'docker' does not exist
+=== RERUN STEP3 ===
+=== RERUN STEP4 ===
+sg: group 'docker' does not exist
+=== RERUN STEP5 ===
+sg: group 'docker' does not exist
+=== RERUN STEP6 ===
+sudo: a password is required
+sudo: a password is required
+=== RERUN STEP7 ===
+sg: group 'docker' does not exist
+=== RERUN CURL HEALTH ===
+
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+curl: (7) Failed to connect to 172.16.10.101 port 5174 after 48 ms: Couldn't connect to server

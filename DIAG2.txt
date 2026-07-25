@@ -1,0 +1,5 @@
+>>> srv-datalake-prod
+/home/inrh/DATALAKE_LAST
+/home/inrh/DATALAKE_LAST
+>>> root@172.16.10.101
+root@172.16.10.101: Permission denied (publickey,password).

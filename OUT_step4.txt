@@ -1,0 +1,4 @@
+From https://github.com/wafik-cloud/DATALAKE_LAST
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+bash: line 1: docker: command not found

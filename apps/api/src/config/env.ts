@@ -65,7 +65,7 @@ export const env = {
     token: process.env.PELAGIC_API_TOKEN || '',
     secret: process.env.PELAGIC_API_SECRET || '',
     syncEnabled: process.env.PELAGIC_SYNC_ENABLED !== 'false',
-    syncCron: process.env.PELAGIC_SYNC_CRON || '0 2 * * *',
+    syncCron: process.env.PELAGIC_SYNC_CRON || '0 1 * * *',
     syncTimezone: process.env.PELAGIC_SYNC_TIMEZONE || 'Africa/Casablanca',
     defaultImeis: parseList(process.env.PELAGIC_SYNC_DEFAULT_IMEIS),
     defaultTags: parseList(process.env.PELAGIC_SYNC_TAGS),

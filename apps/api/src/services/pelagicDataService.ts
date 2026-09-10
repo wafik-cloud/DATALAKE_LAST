@@ -44,7 +44,7 @@ function formatPelagicHttpError(
 export class PelagicDataService {
   buildUrl(exportType: PelagicExportType, options: PelagicExportOptions): string {
     const { dateFrom, dateTo, imeis, deviceInfo, withLastSeen, errant, tags } = options;
-    const base = `${env.pelagic.baseUrl}/${env.pelagic.token}/v1/${exportType}/${dateFrom}/${dateTo}`;
+    const base = `${env.pelagic.baseUrl}/${encodeURIComponent(env.pelagic.token)}/v1/${exportType}/${encodeURIComponent(dateFrom)}/${encodeURIComponent(dateTo)}`;
     const params = new URLSearchParams();
 
     if (imeis?.length) params.set('imeis', imeis.join(','));
@@ -123,16 +123,21 @@ export class PelagicDataService {
     }
 
     const message = lastError instanceof Error ? lastError.message : 'Erreur Pelagic inconnue';
-    throw new Error(redactSensitiveText(message, [env.pelagic.token, env.pelagic.secret]));
+    const err = new Error(redactSensitiveText(message, [env.pelagic.token, env.pelagic.secret]));
+    (err as Error & { status?: number }).status = (lastError as Error & { status?: number })?.status;
+    throw err;
   }
 
   async testConnection(): Promise<PelagicConnectionTestResult> {
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const nextDay = new Date(yesterday);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
     const date = yesterday.toISOString().slice(0, 10);
+    const nextDate = nextDay.toISOString().slice(0, 10);
     const testOptions = {
-      dateFrom: date,
-      dateTo: date,
+      dateFrom: `${date} 00:00:00`,
+      dateTo: `${nextDate} 00:00:00`,
       deviceInfo: false,
       withLastSeen: false,
     };

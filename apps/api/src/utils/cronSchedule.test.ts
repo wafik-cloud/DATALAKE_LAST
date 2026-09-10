@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cronToTime, describeSchedule, getNextDailyRun, timeToCron } from './cronSchedule';
+import { cronToTime, describeSchedule, getNextDailyRun, resolveSchedule, timeToCron } from './cronSchedule';
 
 describe('cronSchedule', () => {
   it('convertit HH:mm en expression cron', () => {
@@ -15,8 +15,17 @@ describe('cronSchedule', () => {
     expect(describeSchedule('01:00', 'Africa/Casablanca', 1)).toContain('01:00');
   });
 
-  it('calcule la prochaine exécution quotidienne', () => {
-    const next = getNextDailyRun('00:22', 'Africa/Casablanca', new Date('2026-07-24T00:30:00Z'));
-    expect(next.getTime()).toBeGreaterThan(Date.now() - 86400000);
+  it('réaligne cron et heure affichée', () => {
+    expect(resolveSchedule({ syncTime: '01:00', syncCron: '0 2 * * *' })).toEqual({
+      syncTime: '01:00',
+      syncCron: '0 1 * * *',
+    });
+  });
+
+  it('dérive l heure depuis le cron si besoin', () => {
+    expect(resolveSchedule({ syncCron: '22 0 * * *' })).toEqual({
+      syncTime: '00:22',
+      syncCron: '22 0 * * *',
+    });
   });
 });

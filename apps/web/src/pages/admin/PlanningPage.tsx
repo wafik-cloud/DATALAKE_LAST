@@ -50,6 +50,28 @@ interface ScheduleState {
   schedulerActive?: boolean;
   lastAutomaticSyncAt?: string | null;
   lastAutomaticSyncDetails?: string | null;
+  lastSyncStatus?: string | null;
+  exportTypes?: string[];
+  pointsEnabled?: boolean;
+  runningJobs?: number;
+  recentCronJobs?: Array<{
+    id: string;
+    exportType: string;
+    status: string;
+    dateFrom: string;
+    dateTo: string;
+    errorMessage?: string | null;
+    rowCount?: number | null;
+    startedAt?: string | null;
+    completedAt?: string | null;
+    failedAt?: string | null;
+  }>;
+  recentCronEvents?: Array<{
+    id: string;
+    action: string;
+    details?: string | null;
+    createdAt: string;
+  }>;
 }
 
 const TIMEZONES = ['Africa/Casablanca', 'UTC', 'Europe/Paris'];
@@ -106,6 +128,12 @@ export default function PlanningPage() {
         schedulerActive: s.scheduler?.active ?? false,
         lastAutomaticSyncAt: s.lastAutomaticSync?.at ?? null,
         lastAutomaticSyncDetails: s.lastAutomaticSync?.details ?? null,
+        lastSyncStatus: s.lastSyncStatus ?? null,
+        exportTypes: s.exportTypes ?? ['trips'],
+        pointsEnabled: s.pointsEnabled ?? false,
+        runningJobs: s.runningJobs ?? 0,
+        recentCronJobs: s.recentCronJobs ?? [],
+        recentCronEvents: s.recentCronEvents ?? [],
       };
       setSchedule(nextSchedule);
       setDraft(nextSchedule);
@@ -118,6 +146,13 @@ export default function PlanningPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const active = schedule.runningJobs && schedule.runningJobs > 0;
+    if (!active) return;
+    const timer = window.setInterval(() => { load(); }, 4000);
+    return () => window.clearInterval(timer);
+  }, [schedule.runningJobs]);
 
   const filteredMonths = useMemo(() => {
     if (selectedYear === 'all') return months;
@@ -323,6 +358,82 @@ export default function PlanningPage() {
             puis enregistrez. Redémarrez l&apos;API si besoin : <code>docker compose restart api</code>.
           </p>
         )}
+
+        <div className="import-execution-panel">
+          <div className="import-execution-header">
+            <h3>Exécution des imports</h3>
+            {schedule.runningJobs && schedule.runningJobs > 0 ? (
+              <span className="import-live-badge"><Loader2 size={14} className="spin" /> En cours…</span>
+            ) : schedule.lastSyncStatus ? (
+              <span className={`import-status-pill ${schedule.lastSyncStatus.toLowerCase()}`}>
+                Dernier cycle : {schedule.lastSyncStatus}
+              </span>
+            ) : (
+              <span className="import-status-pill pending">Aucun import auto encore</span>
+            )}
+          </div>
+          <p className="import-types-hint">
+            <strong>Types actifs :</strong>{' '}
+            {(schedule.exportTypes ?? ['trips']).join(', ')}
+            {!schedule.pointsEnabled && (
+              <span className="import-types-note">
+                {' '}— <code>points</code> désactivé (<code>PELAGIC_SYNC_EXPORT_TYPES=trips</code>) et API Pelagic points en erreur HTTP 500
+              </span>
+            )}
+          </p>
+          {(schedule.recentCronJobs?.length ?? 0) > 0 && (
+            <div className="table-wrap">
+              <table className="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Type</th><th>Période</th><th>Statut</th><th>Lignes</th><th>Message</th><th>Terminé</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schedule.recentCronJobs!.map((job) => (
+                    <tr key={job.id}>
+                      <td>{job.exportType}</td>
+                      <td>{job.dateFrom}</td>
+                      <td><span className={`badge ${job.status}`}>{job.status}</span></td>
+                      <td>{job.rowCount ?? '—'}</td>
+                      <td className="import-job-message">{job.errorMessage || '—'}</td>
+                      <td>
+                        {job.completedAt
+                          ? new Date(job.completedAt).toLocaleString('fr-FR', { timeZone: schedule.timezone })
+                          : job.failedAt
+                            ? new Date(job.failedAt).toLocaleString('fr-FR', { timeZone: schedule.timezone })
+                            : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {(schedule.recentCronEvents?.length ?? 0) > 0 && (
+            <div className="cron-events-panel">
+              <h4>Trace des exécutions planifiées</h4>
+              <div className="table-wrap">
+                <table className="data-table compact">
+                  <thead>
+                    <tr>
+                      <th>Date</th><th>Événement</th><th>Détail</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {schedule.recentCronEvents!.map((event) => (
+                      <tr key={event.id}>
+                        <td>{new Date(event.createdAt).toLocaleString('fr-FR', { timeZone: schedule.timezone })}</td>
+                        <td><span className={`badge ${event.action.includes('FAILED') ? 'FAILED' : event.action.includes('SKIPPED') ? 'WARNING' : 'SUCCESS'}`}>{event.action.replace('PELAGIC_DAILY_SYNC_', '').replace('PELAGIC_DAILY_SYNC', 'SUCCESS')}</span></td>
+                        <td>{event.details || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
 
       <div className="planning-stats fade-in-up">

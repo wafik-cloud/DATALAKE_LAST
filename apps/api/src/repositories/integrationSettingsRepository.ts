@@ -1,15 +1,37 @@
+import { PelagicIntegrationSettings } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { env } from '../config/env';
+import { resolveSchedule } from '../utils/cronSchedule';
+
+async function repairScheduleIfNeeded(
+  settings: PelagicIntegrationSettings
+): Promise<PelagicIntegrationSettings> {
+  const resolved = resolveSchedule({
+    syncTime: settings.syncTime,
+    syncCron: settings.syncCron,
+  });
+  if (settings.syncTime === resolved.syncTime && settings.syncCron === resolved.syncCron) {
+    return settings;
+  }
+  return prisma.pelagicIntegrationSettings.update({
+    where: { id: settings.id },
+    data: {
+      syncTime: resolved.syncTime,
+      syncCron: resolved.syncCron,
+    },
+  });
+}
 
 export async function getIntegrationSettings() {
   let settings = await prisma.pelagicIntegrationSettings.findUnique({ where: { id: 'default' } });
   if (!settings) {
+    const defaults = resolveSchedule({ syncCron: env.pelagic.syncCron });
     settings = await prisma.pelagicIntegrationSettings.create({
       data: {
         id: 'default',
         syncEnabled: env.pelagic.syncEnabled,
-        syncCron: env.pelagic.syncCron,
-        syncTime: '01:00',
+        syncCron: defaults.syncCron,
+        syncTime: defaults.syncTime,
         syncIntervalDays: 1,
         syncTimezone: env.pelagic.syncTimezone,
         defaultImeis: env.pelagic.defaultImeis,
@@ -19,8 +41,9 @@ export async function getIntegrationSettings() {
         includeErrant: env.pelagic.includeErrant,
       },
     });
+    return settings;
   }
-  return settings;
+  return repairScheduleIfNeeded(settings);
 }
 
 export async function updateIntegrationSettings(
@@ -40,9 +63,24 @@ export async function updateIntegrationSettings(
   updatedBy?: string
 ) {
   await getIntegrationSettings();
+
+  const schedulePatch =
+    input.syncTime !== undefined || input.syncCron !== undefined
+      ? resolveSchedule({
+          syncTime: input.syncTime,
+          syncCron: input.syncCron,
+        })
+      : null;
+
   return prisma.pelagicIntegrationSettings.update({
     where: { id: 'default' },
-    data: { ...input, updatedBy },
+    data: {
+      ...input,
+      ...(schedulePatch
+        ? { syncTime: schedulePatch.syncTime, syncCron: schedulePatch.syncCron }
+        : {}),
+      updatedBy,
+    },
   });
 }
 

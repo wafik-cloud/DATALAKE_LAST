@@ -9,6 +9,10 @@ function periodFolderFromDate(date: string): { year: string; month: string } {
   return { year, month };
 }
 
+function safePeriodPart(value: string): string {
+  return value.replace(/[^0-9A-Za-z_-]+/g, '_');
+}
+
 export function buildCsvObjectKey(
   exportType: PelagicExportType,
   dateFrom: string,
@@ -17,7 +21,7 @@ export function buildCsvObjectKey(
 ): string {
   const { year, month } = periodFolderFromDate(dateFrom);
   const ts = formatObjectTimestamp(downloadedAt);
-  const fileName = `${exportType}_${dateFrom}_${dateTo}_${ts}.csv`;
+  const fileName = `${exportType}_${safePeriodPart(dateFrom)}_${safePeriodPart(dateTo)}_${ts}.csv`;
   return `${exportType}/${year}/${month}/${fileName}`;
 }
 
@@ -25,6 +29,12 @@ export function buildManifestObjectKey(dateFrom: string, downloadedAt: Date): st
   const { year, month } = periodFolderFromDate(dateFrom);
   const ts = formatObjectTimestamp(downloadedAt);
   return `manifests/${year}/${month}/manifest_${ts}.json`;
+}
+
+export function buildMapPreviewObjectKey(csvObjectKey: string): string {
+  const safeKey = csvObjectKey.replace(/^\//, '').replace(/[^0-9A-Za-z_./-]+/g, '_');
+  const previewKey = safeKey.replace(/\.csv$/i, '_map_preview.json');
+  return `previews/maps/${previewKey}`;
 }
 
 export function buildErrorObjectKey(downloadedAt: Date): string {
@@ -35,5 +45,5 @@ export function buildErrorObjectKey(downloadedAt: Date): string {
 }
 
 export function isAllowedObjectKey(key: string): boolean {
-  return /^(trips|points|manifests|errors)\//.test(key) && !key.includes('..');
+  return /^(trips|points|manifests|errors|previews)\//.test(key) && !key.includes('..');
 }

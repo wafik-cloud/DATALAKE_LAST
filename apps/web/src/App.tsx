@@ -8,6 +8,7 @@ import PlanningPage from './pages/admin/PlanningPage';
 import SyncPage from './pages/admin/SyncPage';
 import JobsPage from './pages/admin/JobsPage';
 import FilesPage from './pages/admin/FilesPage';
+import QualityControlPage from './pages/admin/QualityControlPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const key = localStorage.getItem('adminApiKey');
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="admin/sync" element={<SyncPage />} />
         <Route path="admin/jobs" element={<JobsPage />} />
         <Route path="admin/files" element={<FilesPage />} />
+        <Route path="admin/quality-control" element={<QualityControlPage />} />
       </Route>
     </Routes>
   );

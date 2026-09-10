@@ -2,15 +2,17 @@ import { Router } from 'express';
 import { PelagicJobStatus } from '@prisma/client';
 import { env, pelagicConfigured } from '../../config/env';
 import { maskSecret } from '../../utils/maskSecret';
+import { prisma } from '../../lib/prisma';
 import { pelagicDataService } from '../../services/pelagicDataService';
 import { assertSyncProducedResults, pelagicImportOrchestrator } from '../../services/pelagicImportOrchestrator';
 import { requireAdmin } from '../../middleware/requireAdmin';
 import { rateLimit } from '../../middleware/rateLimit';
-import { runDailyPelagicSync, restartPelagicScheduler, getSchedulerStatus, getLastAutomaticSync } from '../../jobs/pelagicSyncScheduler';
+import { runDailyPelagicSync, restartPelagicScheduler, getSchedulerStatusResolved, getLastAutomaticSync, getRecentAutomaticSyncEvents } from '../../jobs/pelagicSyncScheduler';
 import {
   getJobById,
   listJobs,
   markJobCancelled,
+  countActiveRunningJobs,
 } from '../../repositories/pelagicImportJobRepository';
 import {
   getIntegrationSettings,
@@ -19,9 +21,10 @@ import {
 import { writeAuditLog } from '../../repositories/auditLogRepository';
 import { PelagicExportType } from '../../types/pelagic';
 import { serializeSyncRun } from '../../utils/serializeJob';
-import { cronToTime, describeSchedule, timeToCron, getNextDailyRun } from '../../utils/cronSchedule';
+import { describeSchedule, resolveSchedule, timeToCron } from '../../utils/cronSchedule';
 import { getMonthlyImportOverview, getMonthDateRange } from '../../services/monthlyImportService';
 import { getMonthPlanInterval, upsertMonthPlan } from '../../repositories/monthPlanRepository';
+import { getMapPreviewSourceRow, getOrCreateMapPreview } from '../../services/mapPreviewService';
 
 const router = Router();
 router.use(requireAdmin);
@@ -32,6 +35,7 @@ function paramId(value: string | string[]): string {
 
 router.get('/settings', async (_req, res) => {
   const settings = await getIntegrationSettings();
+  const schedule = resolveSchedule(settings);
   res.json({
     baseUrl: env.pelagic.baseUrl,
     token: maskSecret(env.pelagic.token),
@@ -44,12 +48,12 @@ router.get('/settings', async (_req, res) => {
     timeoutMs: env.pelagic.httpTimeoutMs,
     maxRetries: env.pelagic.maxRetries,
     syncEnabled: settings.syncEnabled,
-    syncCron: settings.syncCron,
-    syncTime: settings.syncTime || cronToTime(settings.syncCron),
+    syncCron: schedule.syncCron,
+    syncTime: schedule.syncTime,
     syncIntervalDays: settings.syncIntervalDays || 1,
     syncTimezone: settings.syncTimezone,
     scheduleDescription: describeSchedule(
-      settings.syncTime || cronToTime(settings.syncCron),
+      schedule.syncTime,
       settings.syncTimezone,
       settings.syncIntervalDays || 1
     ),
@@ -62,26 +66,53 @@ router.get('/settings', async (_req, res) => {
 
 router.get('/schedule', async (_req, res) => {
   const settings = await getIntegrationSettings();
-  const time = settings.syncTime || cronToTime(settings.syncCron);
+  const schedule = resolveSchedule(settings);
   const intervalDays = settings.syncIntervalDays || 1;
-  const scheduler = getSchedulerStatus();
+  const scheduler = await getSchedulerStatusResolved();
   const lastAutomaticSync = await getLastAutomaticSync();
+
+  const [recentCronJobs, runningJobs, recentCronEvents] = await Promise.all([
+    prisma.pelagicImportJob.findMany({
+      where: { createdBy: 'cron' },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        exportType: true,
+        status: true,
+        dateFrom: true,
+        dateTo: true,
+        errorMessage: true,
+        rowCount: true,
+        startedAt: true,
+        completedAt: true,
+        failedAt: true,
+      },
+    }),
+    countActiveRunningJobs(),
+    getRecentAutomaticSyncEvents(),
+  ]);
 
   res.json({
     enabled: settings.syncEnabled,
-    time,
+    time: schedule.syncTime,
     timezone: settings.syncTimezone,
     intervalDays,
-    cron: settings.syncCron,
-    description: describeSchedule(time, settings.syncTimezone, intervalDays),
+    cron: schedule.syncCron,
+    description: describeSchedule(schedule.syncTime, settings.syncTimezone, intervalDays),
     lastSyncAt: settings.lastSyncAt,
     lastSyncStatus: settings.lastSyncStatus,
+    exportTypes: env.pelagic.syncExportTypes,
+    pointsEnabled: env.pelagic.syncExportTypes.includes('points'),
+    runningJobs,
+    recentCronJobs: recentCronJobs.map((job) => ({
+      ...job,
+      rowCount: job.rowCount ?? null,
+    })),
     scheduler: {
       ...scheduler,
       nextRunAt:
-        settings.syncEnabled && scheduler.active
-          ? getNextDailyRun(time, settings.syncTimezone).toISOString()
-          : null,
+        settings.syncEnabled && scheduler.active ? scheduler.nextRunAt : null,
     },
     lastAutomaticSync: lastAutomaticSync
       ? {
@@ -90,6 +121,12 @@ router.get('/schedule', async (_req, res) => {
           details: lastAutomaticSync.details,
         }
       : null,
+    recentCronEvents: recentCronEvents.map((event) => ({
+      id: event.id,
+      action: event.action,
+      details: event.details,
+      createdAt: event.createdAt,
+    })),
   });
 });
 
@@ -118,7 +155,8 @@ router.put('/schedule', async (req, res) => {
     await restartPelagicScheduler();
     await writeAuditLog('PELAGIC_SCHEDULE_UPDATE', req.header('X-User') || 'admin', updated.syncCron);
 
-    const scheduleTime = updated.syncTime || cronToTime(updated.syncCron);
+    const scheduleTime = resolveSchedule(updated).syncTime;
+    const scheduleCron = resolveSchedule(updated).syncCron;
     res.json({
       message: 'Planification enregistrée',
       schedule: {
@@ -126,7 +164,7 @@ router.put('/schedule', async (req, res) => {
         time: scheduleTime,
         timezone: updated.syncTimezone,
         intervalDays: updated.syncIntervalDays,
-        cron: updated.syncCron,
+        cron: scheduleCron,
         description: describeSchedule(scheduleTime, updated.syncTimezone, updated.syncIntervalDays),
       },
     });
@@ -365,6 +403,40 @@ router.get('/jobs/:id', async (req, res) => {
     res.json({ ...job, fileSize: job.fileSize?.toString() });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Erreur détail job' });
+  }
+});
+
+router.get('/jobs/:id/map-preview', async (req, res) => {
+  try {
+    const job = await getJobById(paramId(req.params.id));
+    if (!job) return res.status(404).json({ error: 'Traitement introuvable' });
+    if (job.exportType !== 'points') {
+      return res.status(400).json({ error: 'La carte est disponible uniquement pour les fichiers points' });
+    }
+    if (job.status !== 'SUCCESS' || !job.minioObjectKey) {
+      return res.status(409).json({ error: 'Le fichier points n est pas disponible pour ce traitement' });
+    }
+
+    const preview = await getOrCreateMapPreview(job.minioObjectKey);
+    res.json(preview);
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Prévisualisation carte impossible' });
+  }
+});
+
+router.get('/jobs/:id/map-row', async (req, res) => {
+  try {
+    const job = await getJobById(paramId(req.params.id));
+    if (!job) return res.status(404).json({ error: 'Traitement introuvable' });
+    if (job.exportType !== 'points' || !job.minioObjectKey) {
+      return res.status(400).json({ error: 'Ligne carte disponible uniquement pour un fichier points' });
+    }
+
+    const sourceRow = Number(req.query.row);
+    const detail = await getMapPreviewSourceRow(job.minioObjectKey, sourceRow);
+    res.json(detail);
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Détail de ligne impossible' });
   }
 });
 

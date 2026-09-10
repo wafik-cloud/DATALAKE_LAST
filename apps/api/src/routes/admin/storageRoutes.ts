@@ -89,6 +89,30 @@ router.get('/objects/download', async (req, res) => {
   }
 });
 
+router.get('/objects/content', async (req, res) => {
+  try {
+    const key = typeof req.query.key === 'string' ? req.query.key : '';
+    if (!key || !isAllowedObjectKey(key)) {
+      return res.status(400).json({ error: 'Clé objet invalide' });
+    }
+
+    const metadata = await minioStorageService.getObjectMetadata(key);
+    const stream = await minioStorageService.downloadObject(key);
+    res.setHeader('Content-Type', String(metadata.metadata?.['content-type'] || 'text/csv'));
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(key.split('/').pop() || 'data.csv')}"`);
+    stream.on('error', () => {
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Lecture objet impossible' });
+      } else {
+        res.end();
+      }
+    });
+    stream.pipe(res);
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Lecture objet impossible' });
+  }
+});
+
 router.delete('/objects', async (req, res) => {
   try {
     const key = typeof req.query.key === 'string' ? req.query.key : '';

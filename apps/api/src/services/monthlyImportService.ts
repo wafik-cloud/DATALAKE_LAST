@@ -1,6 +1,6 @@
 import { PelagicExportType, PelagicJobStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { cronToTime, describeSchedule } from '../utils/cronSchedule';
+import { describeSchedule, resolveSchedule } from '../utils/cronSchedule';
 import { getIntegrationSettings } from '../repositories/integrationSettingsRepository';
 import { getMonthPlanMap } from '../repositories/monthPlanRepository';
 import { env } from '../config/env';
@@ -107,7 +107,8 @@ export async function getMonthlyImportOverview(fromYear = 2020): Promise<{
   const currentYear = Number(today.slice(0, 4));
   const currentMonth = Number(today.slice(5, 7));
 
-  const scheduleTime = settings.syncTime || cronToTime(settings.syncCron);
+  const resolved = resolveSchedule(settings);
+  const scheduleTime = resolved.syncTime;
   const intervalDays = settings.syncIntervalDays || 1;
   const monthPlanMap = await getMonthPlanMap();
   const schedule = {
@@ -115,7 +116,7 @@ export async function getMonthlyImportOverview(fromYear = 2020): Promise<{
     time: scheduleTime,
     timezone: settings.syncTimezone,
     intervalDays,
-    cron: settings.syncCron,
+    cron: resolved.syncCron,
     description: describeSchedule(scheduleTime, settings.syncTimezone, intervalDays),
   };
 

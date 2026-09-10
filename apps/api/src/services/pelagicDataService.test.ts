@@ -57,6 +57,15 @@ describe('PelagicDataService.buildUrl', () => {
     });
     expect(url).toContain('errant=true');
   });
+
+  it('encode les horodatages points dans le chemin', () => {
+    const url = service.buildUrl('points', {
+      dateFrom: '2026-08-13 02:30:00',
+      dateTo: '2026-08-14 02:30:00',
+    });
+
+    expect(url).toContain('/v1/points/2026-08-13%2002%3A30%3A00/2026-08-14%2002%3A30%3A00');
+  });
 });
 
 describe('PelagicDataService.fetchExport', () => {

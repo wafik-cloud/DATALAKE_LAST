@@ -3,9 +3,9 @@ import { env } from '../config/env';
 import { assertSyncProducedResults, pelagicImportOrchestrator } from '../services/pelagicImportOrchestrator';
 import { getIntegrationSettings, markLastSync } from '../repositories/integrationSettingsRepository';
 import { writeAuditLog } from '../repositories/auditLogRepository';
-import { getYesterdayInTimezone } from '../utils/dates';
+import { getLast24HoursRangeInTimezone } from '../utils/dates';
 import { serializeSyncRun } from '../utils/serializeJob';
-import { cronToTime, getNextDailyRun } from '../utils/cronSchedule';
+import { cronToTime, getNextDailyRun, resolveSchedule } from '../utils/cronSchedule';
 import { prisma } from '../lib/prisma';
 
 let scheduled = false;
@@ -16,18 +16,30 @@ let lastSchedulerError: string | null = null;
 let lastCronTriggeredAt: string | null = null;
 
 export function getSchedulerStatus() {
-  const time = schedulerCron ? cronToTime(schedulerCron) : null;
   return {
     active: scheduled && scheduledTask !== null,
     cron: schedulerCron,
     timezone: schedulerTimezone,
-    time,
-    nextRunAt:
-      scheduled && time && schedulerTimezone
-        ? getNextDailyRun(time, schedulerTimezone).toISOString()
-        : null,
+    time: schedulerCron ? cronToTime(schedulerCron) : null,
+    nextRunAt: null as string | null,
     lastCronTriggeredAt,
     lastSchedulerError,
+  };
+}
+
+export async function getSchedulerStatusResolved() {
+  const settings = await getIntegrationSettings();
+  const schedule = resolveSchedule(settings);
+  const base = getSchedulerStatus();
+  return {
+    ...base,
+    cron: schedule.syncCron,
+    time: schedule.syncTime,
+    timezone: settings.syncTimezone,
+    nextRunAt:
+      base.active && settings.syncEnabled
+        ? getNextDailyRun(schedule.syncTime, settings.syncTimezone).toISOString()
+        : null,
   };
 }
 
@@ -35,17 +47,23 @@ export async function runDailyPelagicSync(triggeredBy = 'scheduler') {
   const settings = await getIntegrationSettings();
   if (!settings.syncEnabled) {
     console.log(`[scheduler] Sync ignorée (${triggeredBy}) — synchronisation désactivée`);
+    if (triggeredBy === 'cron') {
+      await writeAuditLog('PELAGIC_DAILY_SYNC_SKIPPED', triggeredBy, 'Synchronisation désactivée');
+    }
     return { skipped: true, reason: 'Synchronisation désactivée' };
   }
 
-  const date = getYesterdayInTimezone(settings.syncTimezone);
-  console.log(`[scheduler] Déclenchement sync (${triggeredBy}) pour la veille: ${date}`);
+  const { dateFrom, dateTo } = getLast24HoursRangeInTimezone(settings.syncTimezone);
+  console.log(`[scheduler] Déclenchement sync (${triggeredBy}) dernières 24h: ${dateFrom} → ${dateTo}`);
+  if (triggeredBy === 'cron') {
+    await writeAuditLog('PELAGIC_DAILY_SYNC_TRIGGERED', triggeredBy, `Période ${dateFrom} → ${dateTo}`);
+  }
 
   try {
     const run = await pelagicImportOrchestrator.runSync(
       {
-        dateFrom: date,
-        dateTo: date,
+        dateFrom,
+        dateTo,
         imeis: settings.defaultImeis,
         tags: settings.defaultTags,
         deviceInfo: settings.deviceInfo,
@@ -61,15 +79,17 @@ export async function runDailyPelagicSync(triggeredBy = 'scheduler') {
     assertSyncProducedResults(run);
 
     const status = run.failures.length ? 'PARTIAL' : 'SUCCESS';
+    const importedCount = run.results.filter((result) => !result.skipped).length;
+    const skippedCount = run.results.filter((result) => result.skipped).length;
     await markLastSync(status);
     await writeAuditLog(
       'PELAGIC_DAILY_SYNC',
       triggeredBy,
-      `Période ${date}${run.failures.length ? ` (${run.failures.length} échec(s))` : ''}`
+      `Période ${dateFrom} → ${dateTo}; fichiers créés: ${importedCount}; ignorés: ${skippedCount}${run.failures.length ? `; échecs: ${run.failures.length}` : ''}`
     );
     if (triggeredBy === 'cron') lastCronTriggeredAt = new Date().toISOString();
-    console.log(`[scheduler] Sync terminée (${triggeredBy}) — ${status} — ${date}`);
-    return { skipped: false, date, ...serializeSyncRun(run) };
+    console.log(`[scheduler] Sync terminée (${triggeredBy}) — ${status} — ${dateFrom} → ${dateTo}`);
+    return { skipped: false, dateFrom, dateTo, ...serializeSyncRun(run) };
   } catch (error) {
     await markLastSync('FAILED');
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
@@ -126,10 +146,10 @@ export async function startPelagicScheduler() {
   );
 
   scheduled = true;
-  const time = settings.syncTime || cronToTime(settings.syncCron);
-  const nextRunAt = getNextDailyRun(time, settings.syncTimezone).toISOString();
+  const schedule = resolveSchedule(settings);
+  const nextRunAt = getNextDailyRun(schedule.syncTime, settings.syncTimezone).toISOString();
   console.log(
-    `[scheduler] Pelagic actif: "${settings.syncCron}" (${settings.syncTimezone}) — prochaine exécution: ${nextRunAt}`
+    `[scheduler] Pelagic actif: ${schedule.syncTime} (${settings.syncTimezone}) cron="${schedule.syncCron}" — prochaine exécution: ${nextRunAt}`
   );
 }
 
@@ -140,9 +160,34 @@ export async function restartPelagicScheduler() {
 export async function getLastAutomaticSync() {
   return prisma.adminAuditLog.findFirst({
     where: {
-      action: { in: ['PELAGIC_DAILY_SYNC', 'PELAGIC_DAILY_SYNC_FAILED'] },
+      action: {
+        in: [
+          'PELAGIC_DAILY_SYNC_TRIGGERED',
+          'PELAGIC_DAILY_SYNC',
+          'PELAGIC_DAILY_SYNC_SKIPPED',
+          'PELAGIC_DAILY_SYNC_FAILED',
+        ],
+      },
       actor: 'cron',
     },
     orderBy: { createdAt: 'desc' },
+  });
+}
+
+export async function getRecentAutomaticSyncEvents(limit = 12) {
+  return prisma.adminAuditLog.findMany({
+    where: {
+      action: {
+        in: [
+          'PELAGIC_DAILY_SYNC_TRIGGERED',
+          'PELAGIC_DAILY_SYNC',
+          'PELAGIC_DAILY_SYNC_SKIPPED',
+          'PELAGIC_DAILY_SYNC_FAILED',
+        ],
+      },
+      actor: 'cron',
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
   });
 }

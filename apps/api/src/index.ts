@@ -3,6 +3,7 @@ import cors from 'cors';
 import { env } from './config/env';
 import { minioStorageService } from './services/minioStorageService';
 import { connectDatabase } from './lib/prisma';
+import { failStaleRunningJobs } from './repositories/pelagicImportJobRepository';
 import { startPelagicScheduler } from './jobs/pelagicSyncScheduler';
 import storageRoutes from './routes/admin/storageRoutes';
 import pelagicRoutes from './routes/admin/pelagicRoutes';
@@ -26,6 +27,10 @@ async function bootstrap() {
   for (let attempt = 1; attempt <= 10; attempt++) {
     try {
       await connectDatabase();
+      const stale = await failStaleRunningJobs();
+      if (stale > 0) {
+        console.warn(`[jobs] ${stale} import(s) RUNNING obsolète(s) marqué(s) en échec`);
+      }
       await startPelagicScheduler();
       dbReady = true;
       break;

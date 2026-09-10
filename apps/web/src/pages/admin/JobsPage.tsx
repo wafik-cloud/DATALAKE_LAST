@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Download, RotateCcw } from 'lucide-react';
+import { RefreshCw, Download, RotateCcw, MapPinned, X } from 'lucide-react';
 import { adminApi } from '../../api/client';
 import PageHeader from '../../components/PageHeader';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import { confirmAction, showError, showSuccess, withLoading } from '../../lib/swal';
+import { type VesselTrackPoint, VesselActivityMap } from './QualityControlPage';
 
 interface PelagicJob {
   id: string;
@@ -18,12 +19,33 @@ interface PelagicJob {
   httpStatus?: number | null;
   attemptCount?: number;
   failedAt?: string | null;
+  rowCount?: number | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAt?: string | null;
+  createdBy?: string | null;
+}
+
+function jobBadgeClass(job: PelagicJob): string {
+  if (job.status === 'RUNNING' || job.status === 'PENDING') return job.status;
+  if (job.status === 'FAILED') return 'FAILED';
+  if (job.errorMessage || job.rowCount === 0) return 'WARNING';
+  return 'SUCCESS';
+}
+
+function formatImportDate(job: PelagicJob): string {
+  const value = job.completedAt || job.startedAt || job.createdAt;
+  return value ? new Date(value).toLocaleString('fr-FR') : '—';
 }
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<PelagicJob[]>([]);
   const [filters, setFilters] = useState({ status: '', exportType: '', search: '' });
   const [detailJob, setDetailJob] = useState<PelagicJob | null>(null);
+  const [mapJob, setMapJob] = useState<PelagicJob | null>(null);
+  const [mapPoints, setMapPoints] = useState<VesselTrackPoint[]>([]);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
 
@@ -49,9 +71,36 @@ export default function JobsPage() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    const active = jobs.some((j) => {
+      if (j.status !== 'RUNNING' && j.status !== 'PENDING') return false;
+      if (!j.startedAt) return j.status === 'RUNNING';
+      return Date.now() - new Date(j.startedAt).getTime() < 30 * 60 * 1000;
+    });
+    if (!active) return;
+    const timer = window.setInterval(() => { load(); }, 4000);
+    return () => window.clearInterval(timer);
+  }, [jobs]);
+
   function openJobDetail(job: PelagicJob) {
-    if (job.status === 'FAILED' || job.errorMessage) {
+    if (job.status === 'FAILED' || job.errorMessage || job.rowCount === 0) {
       setDetailJob(job);
+    }
+  }
+
+  async function openJobMap(job: PelagicJob) {
+    if (!job.minioObjectKey) return;
+    setMapJob(job);
+    setMapPoints([]);
+    setMapError(null);
+    setMapLoading(true);
+    try {
+      const response = await adminApi.pelagicJobMapPreview(job.id);
+      setMapPoints(response.data.trackPoints || []);
+    } catch (err: any) {
+      setMapError(err.response?.data?.error || err.message || 'Chargement de la carte impossible');
+    } finally {
+      setMapLoading(false);
     }
   }
 
@@ -122,11 +171,50 @@ export default function JobsPage() {
         </section>
       )}
 
+      {mapJob && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="map-modal" role="dialog" aria-modal="true" aria-label="Carte des bateaux">
+            <div className="map-modal-header">
+              <div>
+                <h2>Carte des bateaux</h2>
+                <p>{mapJob.fileName || mapJob.minioObjectKey} — {mapJob.dateFrom} → {mapJob.dateTo}</p>
+              </div>
+              <button
+                type="button"
+                className="erp-icon-btn modal-close-btn"
+                title="Fermer"
+                onClick={() => {
+                  setMapJob(null);
+                  setMapPoints([]);
+                  setMapError(null);
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="map-modal-body">
+              {mapLoading && <LoadingOverlay message="Préparation de la carte" submessage="Chargement du JSON cartographique optimisé…" />}
+              {mapError && <div className="alert">{mapError}</div>}
+              {!mapLoading && !mapError && (
+                <VesselActivityMap
+                  points={mapPoints}
+                  loadPointDetails={async (point) => {
+                    if (!point.sourceRow || !mapJob) return null;
+                    const response = await adminApi.pelagicJobMapRow(mapJob.id, point.sourceRow);
+                    return response.data.raw || null;
+                  }}
+                />
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
       <div className="table-wrap">
       <table className="data-table">
         <thead>
           <tr>
-            <th>Type</th><th>Période</th><th>Statut</th><th>Fichier</th><th>Taille</th><th>Actions</th>
+            <th>Type</th><th>Période</th><th>Date import</th><th>Statut</th><th>Lignes</th><th>Fichier</th><th>Taille</th><th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -134,20 +222,22 @@ export default function JobsPage() {
             <tr key={job.id} className={detailJob?.id === job.id ? 'row-selected' : undefined}>
               <td>{job.exportType}</td>
               <td>{job.dateFrom} → {job.dateTo}</td>
+              <td>{formatImportDate(job)}</td>
               <td>
-                {job.status === 'FAILED' || job.errorMessage ? (
+                {job.status === 'FAILED' || job.errorMessage || job.rowCount === 0 ? (
                   <button
                     type="button"
-                    className={`badge badge-button ${job.status}`}
+                    className={`badge badge-button ${jobBadgeClass(job)}`}
                     onClick={() => openJobDetail(job)}
-                    title="Voir le détail de l'erreur"
+                    title="Voir le détail"
                   >
-                    {job.status}
+                    {job.status === 'RUNNING' ? 'EN COURS' : jobBadgeClass(job) === 'WARNING' ? 'VIDE' : job.status}
                   </button>
                 ) : (
                   <span className={`badge ${job.status}`}>{job.status}</span>
                 )}
               </td>
+              <td>{job.rowCount ?? '—'}</td>
               <td>{job.fileName || '—'}</td>
               <td>{job.fileSize ? `${(Number(job.fileSize) / 1024).toFixed(1)} Ko` : '—'}</td>
               <td className="actions-cell">
@@ -174,6 +264,11 @@ export default function JobsPage() {
                     const r = await adminApi.storageDownload(job.minioObjectKey!);
                     window.open(r.data.url, '_blank');
                   }}><Download size={14} /> Télécharger</button>
+                )}
+                {job.exportType === 'points' && job.minioObjectKey && job.status === 'SUCCESS' && (
+                  <button type="button" className="btn sm" onClick={() => openJobMap(job)}>
+                    <MapPinned size={14} /> Carte
+                  </button>
                 )}
               </td>
             </tr>

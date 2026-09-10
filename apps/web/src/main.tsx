@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './styles/admin.css';
 import 'sweetalert2/dist/sweetalert2.min.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

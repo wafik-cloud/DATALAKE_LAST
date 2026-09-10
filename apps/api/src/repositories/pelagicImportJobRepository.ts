@@ -150,3 +150,39 @@ export async function markJobCancelled(id: string) {
     data: { status: PelagicJobStatus.CANCELLED },
   });
 }
+
+/** Jobs RUNNING orbites (redémarrage API, crash) — les marque en échec. */
+export async function failStaleRunningJobs(maxAgeMinutes = 10) {
+  const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
+  const stale = await prisma.pelagicImportJob.findMany({
+    where: {
+      status: PelagicJobStatus.RUNNING,
+      OR: [
+        { startedAt: { lt: cutoff } },
+        { startedAt: null, createdAt: { lt: cutoff } },
+      ],
+    },
+    select: { id: true },
+  });
+  if (!stale.length) return 0;
+
+  await prisma.pelagicImportJob.updateMany({
+    where: { id: { in: stale.map((j) => j.id) } },
+    data: {
+      status: PelagicJobStatus.FAILED,
+      failedAt: new Date(),
+      errorMessage: 'Import interrompu (timeout ou redémarrage du service)',
+    },
+  });
+  return stale.length;
+}
+
+export async function countActiveRunningJobs(maxAgeMinutes = 10) {
+  const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
+  return prisma.pelagicImportJob.count({
+    where: {
+      status: PelagicJobStatus.RUNNING,
+      startedAt: { gte: cutoff },
+    },
+  });
+}

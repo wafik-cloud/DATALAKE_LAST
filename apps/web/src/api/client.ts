@@ -19,6 +19,8 @@ export const adminApi = {
   storageTest: () => api.post('/api/admin/storage/test'),
   storageObjects: (prefix = '') => api.get('/api/admin/storage/objects', { params: { prefix } }),
   storageDownload: (key: string) => api.get('/api/admin/storage/objects/download', { params: { key } }),
+  storageObjectContent: (key: string) =>
+    api.get('/api/admin/storage/objects/content', { params: { key }, responseType: 'blob' }),
   storageDelete: (key: string) => api.delete('/api/admin/storage/objects', { params: { key } }),
   pelagicSettings: () => api.get('/api/admin/pelagic/settings'),
   pelagicUpdateSettings: (data: unknown) => api.put('/api/admin/pelagic/settings', data),
@@ -34,6 +36,8 @@ export const adminApi = {
   pelagicSyncNow: () => api.post('/api/admin/pelagic/sync/now'),
   pelagicJobs: (params: Record<string, string | number>) => api.get('/api/admin/pelagic/jobs', { params }),
   pelagicJob: (id: string) => api.get(`/api/admin/pelagic/jobs/${id}`),
+  pelagicJobMapPreview: (id: string) => api.get(`/api/admin/pelagic/jobs/${id}/map-preview`),
+  pelagicJobMapRow: (id: string, row: number) => api.get(`/api/admin/pelagic/jobs/${id}/map-row`, { params: { row } }),
   pelagicRetry: (id: string) => api.post(`/api/admin/pelagic/jobs/${id}/retry`),
   pelagicCancel: (id: string) => api.post(`/api/admin/pelagic/jobs/${id}/cancel`),
 };

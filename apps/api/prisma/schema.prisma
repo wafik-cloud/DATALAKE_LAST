@@ -56,7 +56,7 @@ model PelagicImportJob {
 model PelagicIntegrationSettings {
   id             String   @id @default("default")
   syncEnabled    Boolean  @default(true) @map("sync_enabled")
-  syncCron       String   @default("0 2 * * *") @map("sync_cron")
+  syncCron       String   @default("0 1 * * *") @map("sync_cron")
   syncTime       String   @default("01:00") @map("sync_time")
   syncIntervalDays Int    @default(1) @map("sync_interval_days")
   syncTimezone   String   @default("Africa/Casablanca") @map("sync_timezone")

@@ -9,6 +9,7 @@ import {
   LogOut,
   CalendarClock,
   User,
+  ShieldCheck,
 } from 'lucide-react';
 
 const topModules = [
@@ -16,6 +17,7 @@ const topModules = [
   { to: '/admin/planning', label: 'Planification' },
   { to: '/admin/jobs', label: 'Historique' },
   { to: '/admin/files', label: 'Fichiers' },
+  { to: '/admin/quality-control', label: 'Qualité' },
   { to: '/admin/sync', label: 'Import' },
   { to: '/admin/minio', label: 'MinIO' },
   { to: '/admin/pelagic', label: 'Pelagic' },
@@ -35,6 +37,7 @@ const sidebarGroups = [
       { to: '/admin/jobs', label: 'Historique détaillé', icon: History },
       { to: '/admin/sync', label: 'Import manuel', icon: RefreshCw },
       { to: '/admin/files', label: 'Fichiers stockés', icon: FolderOpen },
+      { to: '/admin/quality-control', label: 'Contrôle qualité CSV', icon: ShieldCheck },
     ],
   },
   {
@@ -52,6 +55,7 @@ function pageTitle(pathname: string): string {
     '/admin/planning': 'Planification & imports',
     '/admin/jobs': 'Historique détaillé',
     '/admin/files': 'Fichiers stockés',
+    '/admin/quality-control': 'Contrôle qualité CSV',
     '/admin/sync': 'Import manuel',
     '/admin/minio': 'Configuration MinIO',
     '/admin/pelagic': 'Configuration Pelagic',

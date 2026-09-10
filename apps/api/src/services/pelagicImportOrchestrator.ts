@@ -4,7 +4,8 @@ import { minioStorageService, MinioStorageService } from './minioStorageService'
 import { pelagicDataService } from './pelagicDataService';
 import { validateCsvResponse } from '../utils/csvValidation';
 import { buildCsvObjectKey, buildErrorObjectKey, buildManifestObjectKey } from '../utils/objectKeys';
-import { assertValidDateRange, splitDateRange } from '../utils/dates';
+import { createAndStoreMapPreviewFromBuffer } from './mapPreviewService';
+import { assertValidDateRange, splitDateRange, toPelagicExclusiveDateTimeRange } from '../utils/dates';
 import {
   acquireJobLock,
   buildJobLockKey,
@@ -40,6 +41,10 @@ export interface SyncRunResult {
 
 export class PelagicImportOrchestrator {
   async runExport(input: RunExportInput) {
+    if (input.exportType === 'points') {
+      input = { ...input, ...toPelagicExclusiveDateTimeRange(input.dateFrom, input.dateTo) };
+    }
+
     assertValidDateRange(input.dateFrom, input.dateTo);
 
     const jobInput = {
@@ -111,6 +116,11 @@ export class PelagicImportOrchestrator {
         },
       });
 
+      const mapPreview =
+        input.exportType === 'points'
+          ? await createAndStoreMapPreviewFromBuffer(objectKey, fetchResult.buffer)
+          : null;
+
       const manifestKey = buildManifestObjectKey(input.dateFrom, downloadedAt);
       const manifest = {
         jobId: job.jobUuid,
@@ -129,6 +139,7 @@ export class PelagicImportOrchestrator {
         checksumSha256: checksum,
         status: 'SUCCESS',
         rowCount: validation.rowCount,
+        mapPreviewKey: mapPreview?.previewObjectKey,
         note: validation.emptyData ? validation.message : undefined,
       };
 

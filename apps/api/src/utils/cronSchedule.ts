@@ -1,5 +1,27 @@
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+export interface ResolvedSchedule {
+  syncTime: string;
+  syncCron: string;
+}
+
+/** syncTime est la référence affichée ; le cron est toujours dérivé de l'heure. */
+export function resolveSchedule(input: {
+  syncTime?: string | null;
+  syncCron?: string | null;
+}): ResolvedSchedule {
+  const time = input.syncTime?.trim();
+  const cron = input.syncCron?.trim();
+
+  if (time && TIME_RE.test(time)) {
+    return { syncTime: time, syncCron: timeToCron(time) };
+  }
+  if (cron) {
+    return { syncTime: cronToTime(cron), syncCron: cron };
+  }
+  return { syncTime: '01:00', syncCron: '0 1 * * *' };
+}
+
 export function timeToCron(time: string): string {
   const match = TIME_RE.exec(time.trim());
   if (!match) {
@@ -20,8 +42,9 @@ export function cronToTime(cron: string): string {
 }
 
 export function describeSchedule(time: string, timezone: string, intervalDays: number): string {
-  const intervalLabel = intervalDays === 1 ? 'la veille' : `par tranches de ${intervalDays} jours`;
-  return `Chaque nuit à ${time} (${timezone}) — import automatique de ${intervalLabel}`;
+  const intervalLabel = intervalDays === 1 ? 'dernières 24 heures' : `tranches de ${intervalDays} jours`;
+  const prefix = intervalDays === 1 ? 'des' : 'de';
+  return `Chaque nuit à ${time} (${timezone}) — import automatique ${prefix} ${intervalLabel}`;
 }
 
 function getZonedParts(date: Date, timeZone: string) {

@@ -1,98 +1,103 @@
 ================================================================================
 DATALAKE_LAST — Production Deploy & Test Report
-Generated: 2026-07-26 (agent run)
+Generated: 2026-09-10 (agent run)
 Target: 172.16.10.101 (SSH alias: srv-datalake-prod, user: inrh)
 ================================================================================
 
-PART A — GIT (LOCAL: /Users/M.WAFIK/CSID_projects/DATALAKE_LAST)
+PART A — GIT LOCAL
 --------------------------------------------------------------------------------
 Branch: main
-Pre-push status: untracked deploy artifacts + scripts/deploy-prod.sh, scripts/install-and-run.sh
-Tracked file diffs: none (.env ignored via .gitignore)
-Action: git add -A ( .env not staged — gitignored )
-Commit message: production deploy scripts and latest fixes
-Commit hash (full): 364e6d323f0bb663c0a6b4add11ce16cd0383028
-Commit hash (short): 364e6d3
-Push: SUCCESS — origin main (0ce4158..364e6d3)
+Remote: origin https://github.com/wafik-cloud/DATALAKE_LAST.git
+Application commit: 0d6f17c Add maritime QC map and scheduled import traces
+Push result: SUCCESS — origin/main updated from 364e6d3 to 0d6f17c
 
-PART B — PRODUCTION DEPLOY (SSH srv-datalake-prod / inrh@172.16.10.101)
+Local validation before push:
+  - apps/api npm run build: SUCCESS
+  - apps/api npm test: SUCCESS — 6 files, 22 tests passed
+  - apps/web npm run build: SUCCESS
+
+PART B — PRODUCTION UPDATE
 --------------------------------------------------------------------------------
-1. Host / Docker check:
-   hostname: srv-datalake-prod
-   docker --version: FAILED — bash: docker: command not found (exit 127)
-   docker compose version: FAILED — bash: docker: command not found (exit 127)
-   user groups: inrh adm cdrom sudo dip plugdev lxd (uid=1000)
+Server reachability:
+  - SSH alias srv-datalake-prod: SUCCESS
+  - hostname: srv-datalake-prod
+  - user: inrh
 
-2. Docker install attempts:
-   sudo -n apt-get install -y docker.io docker-compose-v2: FAILED — sudo: a password is required
-   ssh root@172.16.10.101: FAILED — Permission denied (publickey,password)
-   BLOCKER: Docker is not installed; passwordless sudo and root SSH unavailable.
+Server prerequisites:
+  - docker: /usr/bin/docker
+  - Docker version: 29.1.3
+  - Docker Compose version: 2.40.3
 
-3. scp .env:
-   scp /Users/M.WAFIK/CSID_projects/DATALAKE_LAST/.env srv-datalake-prod:~/DATALAKE_LAST/.env
-   Result: SUCCESS (exit 0)
+Pre-deploy repository state:
+  - Previous commit: 364e6d3
+  - Worktree had local uncommitted/deleted/untracked files.
+  - Safety action: git stash push --include-untracked
+  - Stash created: stash@{0}: On main: pre-deploy-20260910-014051
 
-4. git pull origin main (~/DATALAKE_LAST):
-   Result: SUCCESS — Fast-forward 0ce4158..364e6d3 (45 files, 646 insertions)
+Deployment actions:
+  - git pull --ff-only origin main: SUCCESS
+  - Server repository commit after pull: 0d6f17c
+  - Docker build cache cleanup: SUCCESS — reclaimed about 2.786 GB
+  - docker compose up -d --build: SUCCESS
+  - docker compose exec -T api npx prisma migrate deploy: SUCCESS
+  - Prisma result: 4 migrations found, no pending migrations to apply
 
-5. bash scripts/install-and-run.sh:
-   Result: FAILED (exit 1)
-   Output: === 1/5 Docker === — sudo password required for Docker install step
-
-6. Manual docker compose up -d --build / migrate:
-   Not executed — docker binary missing
-
-7. docker compose ps:
-   Not available — docker: command not found
-
-Container status: NO CONTAINERS RUNNING (Docker not installed; ports 5001/5174 not listening)
-
-PART C — TESTS
+PART C — PRODUCTION CONTAINERS
 --------------------------------------------------------------------------------
-On server (127.0.0.1):
+Running containers:
+  - datalake-api: Up, port 5001->5001
+  - datalake-web: Up, port 5174->5173
+  - datalake-postgres: Up, healthy, port 5432->5432
+  - datalake-minio: Up, healthy, ports 9000-9001->9000-9001
 
-  curl http://127.0.0.1:5001/health
-    Result: empty response (connection failed / nothing listening)
+Disk:
+  - Before cleanup: 626 MB available, 98% used
+  - After deploy: about 1.5 GB available, 94% used
+  - Note: disk remains tight and should be monitored.
 
-  curl -o /dev/null -w "%{http_code}" http://127.0.0.1:5174/
-    Result: HTTP code 000
-
-  curl -H "X-Admin-Key: <from .env>" http://127.0.0.1:5001/api/admin/dashboard | head -c 200
-    Result: empty (no service)
-
-From local machine (172.16.10.101):
-
-  curl --connect-timeout 8 http://172.16.10.101:5001/health
-    Result: empty / no response body
-
-  curl -o /dev/null -w "%{http_code}" --connect-timeout 8 http://172.16.10.101:5174/
-    Result: HTTP code 000
-
-Port check on server: no listeners on 5001 or 5174
-
-PRODUCTION URLs (when stack is running)
+PART D — PRODUCTION TESTS
 --------------------------------------------------------------------------------
-  API health:  http://172.16.10.101:5001/health
-  Web UI:      http://172.16.10.101:5174/
-  Admin API:   http://172.16.10.101:5001/api/admin/dashboard  (header: X-Admin-Key)
+Server-local checks:
+  - curl http://127.0.0.1:5001/health: SUCCESS
+  - curl http://127.0.0.1:5174/: HTTP 200
 
-SUMMARY & BLOCKERS
+Network checks from local machine:
+  - curl http://172.16.10.101:5001/health: SUCCESS
+  - curl -I http://172.16.10.101:5174/admin/quality-control: HTTP 200
+
+Admin API check:
+  - /api/admin/dashboard with X-Admin-Key from server .env: SUCCESS
+  - MinIO connected: true
+  - Pelagic configured/connected: true
+  - Scheduler enabled: true
+
+Browser UI check on production URL:
+  - URL: http://172.16.10.101:5174/admin/quality-control
+  - Authenticated page mounted: SUCCESS
+  - CSV import control present: SUCCESS
+  - MapLibre canvas present: SUCCESS
+  - Test CSV rendered: 8 valid positions, 2 vessels
+  - Playback moved during lecture: SUCCESS
+  - Forbidden map/page text detected: false
+
+Production URLs:
+  - Web UI: http://172.16.10.101:5174/
+  - API health: http://172.16.10.101:5001/health
+  - MinIO console: http://172.16.10.101:9001/
+
+SUMMARY
 --------------------------------------------------------------------------------
 DONE:
-  - Code pushed to GitHub main @ 364e6d3
-  - Production repo updated to same commit
-  - .env copied to ~/DATALAKE_LAST/.env on server
+  - Code committed locally.
+  - Code pushed to GitHub main.
+  - Production server updated via SSH.
+  - Production containers rebuilt and restarted.
+  - Prisma migrations checked.
+  - API, web, dashboard, and maritime map UI verified.
 
-BLOCKED:
-  - Docker Engine / Docker Compose not installed on srv-datalake-prod
-  - Cannot install without interactive sudo password or root access
-  - Application stack not started; all health/UI tests failed
-
-RECOMMENDED NEXT STEPS (requires operator on 172.16.10.101):
-  1. SSH as inrh and run: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2
-  2. Add inrh to docker group: sudo usermod -aG docker inrh (re-login)
-  3. cd ~/DATALAKE_LAST && bash scripts/install-and-run.sh
-     OR: docker compose up -d --build && docker compose exec -T api npx prisma migrate deploy
-  4. Re-run Part C curl tests
+NOTES:
+  - Server worktree changes before deploy were preserved in git stash.
+  - Docker build cache cleanup was required because the root filesystem was 98% full.
+  - The root filesystem is still 94% full after deploy; plan disk cleanup/extension.
 
 ================================================================================

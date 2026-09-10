@@ -12,7 +12,7 @@ services:
     ports:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ${DATALAKE_POSTGRES_DATA_DIR:-postgres_data}:/var/lib/postgresql/data
     networks:
       - app-network
     healthcheck:
@@ -38,7 +38,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
-      - minio_data:/data
+      - ${DATALAKE_MINIO_DATA_DIR:-minio_data}:/data
     networks:
       - app-network
     healthcheck:
@@ -90,6 +90,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-datalake}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-datalake}
     ports:
       - "${API_PORT:-5001}:5001"
+    volumes:
+      - ${DATALAKE_ROOT_DIR:-datalake_observed}:/datalake:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,3 +120,4 @@ networks:
 volumes:
   postgres_data:
   minio_data:
+  datalake_observed:

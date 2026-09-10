@@ -50,6 +50,7 @@ type MaintenanceSummary = {
   };
   storage: {
     root: DiskMetric | null;
+    dataLake: DiskMetric | null;
     filesystems: DiskMetric[];
   };
   process: {
@@ -128,6 +129,7 @@ export default function MaintenancePage() {
   }, []);
 
   const rootDiskTone = useMemo(() => toneForPercent(summary?.storage.root?.usedPercent || 0), [summary]);
+  const dataLakeDiskTone = useMemo(() => toneForPercent(summary?.storage.dataLake?.usedPercent || 0), [summary]);
   const memoryTone = useMemo(() => toneForPercent(summary?.memory.usedPercent || 0), [summary]);
   const cpuTone = useMemo(() => toneForPercent(summary?.cpu.usagePercent || 0), [summary]);
 
@@ -135,6 +137,10 @@ export default function MaintenancePage() {
   if (!summary) return <p>Synthèse maintenance indisponible</p>;
 
   const rootDisk = summary.storage.root;
+  const dataLakeDisk = summary.storage.dataLake;
+  const mainStorageDisk = dataLakeDisk || rootDisk;
+  const mainStorageTone = dataLakeDisk ? dataLakeDiskTone : rootDiskTone;
+  const hasCriticalResource = [cpuTone, memoryTone, rootDiskTone, dataLakeDiskTone].includes('danger');
 
   return (
     <div className="maintenance-page">
@@ -166,10 +172,10 @@ export default function MaintenancePage() {
         />
         <StatCard
           icon={<HardDrive size={20} />}
-          label="Stockage racine"
-          value={rootDisk ? `${rootDisk.usedPercent} %` : 'Indisponible'}
-          hint={rootDisk ? `${formatBytes(rootDisk.availableBytes)} libres` : 'df indisponible'}
-          tone={rootDisk ? rootDiskTone : 'warning'}
+          label={dataLakeDisk ? 'Stockage données' : 'Stockage racine'}
+          value={mainStorageDisk ? `${mainStorageDisk.usedPercent} %` : 'Indisponible'}
+          hint={mainStorageDisk ? `${formatBytes(mainStorageDisk.availableBytes)} libres sur ${mainStorageDisk.mount}` : 'df indisponible'}
+          tone={mainStorageDisk ? mainStorageTone : 'warning'}
         />
         <StatCard
           icon={<Clock size={20} />}
@@ -183,8 +189,8 @@ export default function MaintenancePage() {
         <div className="card maintenance-panel">
           <div className="section-head">
             <h2>Ressources système</h2>
-            <span className={`badge ${cpuTone === 'danger' || memoryTone === 'danger' || rootDiskTone === 'danger' ? 'FAILED' : 'SUCCESS'}`}>
-              {cpuTone === 'danger' || memoryTone === 'danger' || rootDiskTone === 'danger' ? 'Attention' : 'OK'}
+            <span className={`badge ${hasCriticalResource ? 'FAILED' : 'SUCCESS'}`}>
+              {hasCriticalResource ? 'Attention' : 'OK'}
             </span>
           </div>
 
@@ -212,6 +218,16 @@ export default function MaintenancePage() {
                 </div>
                 <MetricBar value={rootDisk.usedPercent} tone={rootDiskTone} />
                 <small>{formatBytes(rootDisk.availableBytes)} libres sur {formatBytes(rootDisk.sizeBytes)}</small>
+              </div>
+            )}
+            {dataLakeDisk && (
+              <div>
+                <div className="maintenance-row">
+                  <span><HardDrive size={15} /> Stockage données</span>
+                  <strong>{formatBytes(dataLakeDisk.usedBytes)}</strong>
+                </div>
+                <MetricBar value={dataLakeDisk.usedPercent} tone={dataLakeDiskTone} />
+                <small>{formatBytes(dataLakeDisk.availableBytes)} libres sur {formatBytes(dataLakeDisk.sizeBytes)}</small>
               </div>
             )}
           </div>

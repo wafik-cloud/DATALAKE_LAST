@@ -76,7 +76,7 @@ function parseDf(output: string): DiskMetric[] {
 }
 
 async function readDisks(): Promise<DiskMetric[]> {
-  const paths = ['/', '/app', '/tmp'];
+  const paths = ['/', '/datalake', '/app', '/tmp'];
   try {
     const { stdout } = await execFileAsync('df', ['-Pk', ...paths], { timeout: 5000 });
     return parseDf(stdout);
@@ -91,6 +91,7 @@ export async function getMaintenanceSummary() {
   const freeMemoryBytes = os.freemem();
   const usedMemoryBytes = totalMemoryBytes - freeMemoryBytes;
   const rootDisk = disks.find((disk) => disk.mount === '/') || disks[0] || null;
+  const dataLakeDisk = disks.find((disk) => disk.mount === '/datalake') || null;
   const processMemory = process.memoryUsage();
 
   return {
@@ -118,6 +119,7 @@ export async function getMaintenanceSummary() {
     },
     storage: {
       root: rootDisk,
+      dataLake: dataLakeDisk,
       filesystems: disks,
     },
     process: {

@@ -8,6 +8,7 @@ import { startPelagicScheduler } from './jobs/pelagicSyncScheduler';
 import storageRoutes from './routes/admin/storageRoutes';
 import pelagicRoutes from './routes/admin/pelagicRoutes';
 import dashboardRoutes from './routes/admin/dashboardRoutes';
+import maintenanceRoutes from './routes/admin/maintenanceRoutes';
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/admin/dashboard', dashboardRoutes);
 app.use('/api/admin/storage', storageRoutes);
 app.use('/api/admin/pelagic', pelagicRoutes);
+app.use('/api/admin/maintenance', maintenanceRoutes);
 
 async function bootstrap() {
   let dbReady = false;

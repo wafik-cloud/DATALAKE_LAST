@@ -10,6 +10,7 @@ import {
   CalendarClock,
   User,
   ShieldCheck,
+  Server,
 } from 'lucide-react';
 
 const topModules = [
@@ -21,6 +22,7 @@ const topModules = [
   { to: '/admin/sync', label: 'Import' },
   { to: '/admin/minio', label: 'MinIO' },
   { to: '/admin/pelagic', label: 'Pelagic' },
+  { to: '/admin/maintenance', label: 'Maintenance' },
 ];
 
 const sidebarGroups = [
@@ -45,6 +47,7 @@ const sidebarGroups = [
     items: [
       { to: '/admin/minio', label: 'Configuration MinIO', icon: Database },
       { to: '/admin/pelagic', label: 'Configuration Pelagic', icon: Radio },
+      { to: '/admin/maintenance', label: 'Maintenance serveur', icon: Server },
     ],
   },
 ];
@@ -59,6 +62,7 @@ function pageTitle(pathname: string): string {
     '/admin/sync': 'Import manuel',
     '/admin/minio': 'Configuration MinIO',
     '/admin/pelagic': 'Configuration Pelagic',
+    '/admin/maintenance': 'Maintenance serveur',
   };
   return map[pathname] || 'DATALAKE';
 }

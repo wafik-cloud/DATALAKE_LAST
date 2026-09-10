@@ -40,4 +40,5 @@ export const adminApi = {
   pelagicJobMapRow: (id: string, row: number) => api.get(`/api/admin/pelagic/jobs/${id}/map-row`, { params: { row } }),
   pelagicRetry: (id: string) => api.post(`/api/admin/pelagic/jobs/${id}/retry`),
   pelagicCancel: (id: string) => api.post(`/api/admin/pelagic/jobs/${id}/cancel`),
+  maintenanceSummary: () => api.get('/api/admin/maintenance/summary'),
 };

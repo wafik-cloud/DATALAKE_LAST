@@ -1,4 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { access } from 'fs/promises';
+import { Readable } from 'stream';
 
 const axiosGet = vi.fn();
 
@@ -85,6 +87,29 @@ describe('PelagicDataService.fetchExport', () => {
     await expect(
       service.fetchExport('points', { dateFrom: '2026-07-02', dateTo: '2026-07-02' })
     ).rejects.toThrow(/export points indisponible/);
+  });
+
+  it('compte toutes les lignes d’un CSV reçu en plusieurs blocs puis nettoie le temporaire', async () => {
+    axiosGet.mockResolvedValue({
+      status: 200,
+      data: Readable.from([
+        Buffer.from('imei,lat,lng\n111,1'),
+        Buffer.from(',2\n222,3,4\n333,5,6'),
+      ]),
+      headers: { 'content-type': 'text/csv' },
+    });
+
+    const result = await service.fetchExport('points', {
+      dateFrom: '2026-07-02',
+      dateTo: '2026-07-03',
+    });
+
+    expect(result.rowCount).toBe(3);
+    expect(result.fileSize).toBeGreaterThan(0);
+    expect(result.checksumSha256).toMatch(/^[a-f0-9]{64}$/);
+    await expect(access(result.filePath)).resolves.toBeUndefined();
+    await result.cleanup();
+    await expect(access(result.filePath)).rejects.toThrow();
   });
 });
 

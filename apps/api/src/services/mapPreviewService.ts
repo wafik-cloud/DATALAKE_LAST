@@ -353,7 +353,13 @@ export async function createAndStoreMapPreview(sourceObjectKey: string, stream: 
 }
 
 export async function createAndStoreMapPreviewFromBuffer(sourceObjectKey: string, buffer: Buffer): Promise<MapPreview> {
-  return createAndStoreMapPreview(sourceObjectKey, Readable.from(buffer));
+  async function* chunks() {
+    const chunkSize = 64 * 1024;
+    for (let offset = 0; offset < buffer.length; offset += chunkSize) {
+      yield buffer.subarray(offset, Math.min(offset + chunkSize, buffer.length));
+    }
+  }
+  return createAndStoreMapPreview(sourceObjectKey, Readable.from(chunks()));
 }
 
 export async function getOrCreateMapPreview(sourceObjectKey: string): Promise<MapPreview> {

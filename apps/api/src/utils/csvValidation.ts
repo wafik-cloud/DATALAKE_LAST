@@ -16,7 +16,11 @@ function looksLikeJsonError(text: string): boolean {
   }
 }
 
-export function validateCsvResponse(buffer: Buffer, contentType?: string): CsvValidationResult {
+export function validateCsvResponse(
+  buffer: Buffer,
+  contentType?: string,
+  knownRowCount?: number
+): CsvValidationResult {
   if (!buffer.length) {
     return { valid: false, emptyData: true, rowCount: 0, headerLine: '', message: 'Réponse vide' };
   }
@@ -47,7 +51,7 @@ export function validateCsvResponse(buffer: Buffer, contentType?: string): CsvVa
   }
 
   const headerLine = lines[0];
-  const dataRows = lines.length - 1;
+  const dataRows = knownRowCount ?? lines.length - 1;
 
   if (dataRows === 0) {
     return {

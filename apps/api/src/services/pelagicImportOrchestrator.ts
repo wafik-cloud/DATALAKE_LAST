@@ -1,10 +1,9 @@
 import { PelagicExportType } from '@prisma/client';
 import { env } from '../config/env';
-import { minioStorageService, MinioStorageService } from './minioStorageService';
+import { minioStorageService } from './minioStorageService';
 import { pelagicDataService } from './pelagicDataService';
-import { validateCsvResponse } from '../utils/csvValidation';
 import { buildCsvObjectKey, buildErrorObjectKey, buildManifestObjectKey } from '../utils/objectKeys';
-import { createAndStoreMapPreviewFromBuffer } from './mapPreviewService';
+import { createAndStoreMapPreview } from './mapPreviewService';
 import { assertValidDateRange, splitDateRange, toPelagicExclusiveDateTimeRange } from '../utils/dates';
 import {
   acquireJobLock,
@@ -82,6 +81,8 @@ export class PelagicImportOrchestrator {
 
     const job = await createJob(jobInput);
 
+    let cleanupDownload: (() => Promise<void>) | undefined;
+    const storedObjectKeys: string[] = [];
     try {
       await markJobRunning(job.id);
 
@@ -89,21 +90,17 @@ export class PelagicImportOrchestrator {
         input.exportType === 'trips'
           ? await pelagicDataService.exportTrips(input)
           : await pelagicDataService.exportPoints(input);
-
-      const validation = validateCsvResponse(fetchResult.buffer, fetchResult.contentType);
-      if (!validation.valid) {
-        throw new Error(validation.message || 'CSV invalide');
-      }
+      cleanupDownload = fetchResult.cleanup;
 
       const downloadedAt = new Date();
       const objectKey = buildCsvObjectKey(input.exportType, input.dateFrom, input.dateTo, downloadedAt);
-      const checksum = MinioStorageService.sha256(fetchResult.buffer);
+      const checksum = fetchResult.checksumSha256;
       const fileName = objectKey.split('/').pop() || objectKey;
 
       await minioStorageService.uploadObject({
         key: objectKey,
-        body: fetchResult.buffer,
-        size: fetchResult.buffer.length,
+        body: fetchResult.createReadStream(),
+        size: fetchResult.fileSize,
         contentType: 'text/csv',
         metadata: {
           'export-type': input.exportType,
@@ -117,11 +114,13 @@ export class PelagicImportOrchestrator {
           'status': 'SUCCESS',
         },
       });
+      storedObjectKeys.push(objectKey);
 
       const mapPreview =
         input.exportType === 'points'
-          ? await createAndStoreMapPreviewFromBuffer(objectKey, fetchResult.buffer)
+          ? await createAndStoreMapPreview(objectKey, fetchResult.createReadStream())
           : null;
+      if (mapPreview) storedObjectKeys.push(mapPreview.previewObjectKey);
 
       const manifestKey = buildManifestObjectKey(input.dateFrom, downloadedAt);
       const manifest = {
@@ -137,12 +136,12 @@ export class PelagicImportOrchestrator {
         downloadedAt: downloadedAt.toISOString(),
         bucket: env.minio.bucket,
         objectKey,
-        fileSize: fetchResult.buffer.length,
+        fileSize: fetchResult.fileSize,
         checksumSha256: checksum,
         status: 'SUCCESS',
-        rowCount: validation.rowCount,
+        rowCount: fetchResult.rowCount,
         mapPreviewKey: mapPreview?.previewObjectKey,
-        note: validation.emptyData ? validation.message : undefined,
+        note: fetchResult.emptyData ? 'Aucune donnée disponible pour la période sélectionnée.' : undefined,
       };
 
       await minioStorageService.uploadObject({
@@ -151,16 +150,17 @@ export class PelagicImportOrchestrator {
         contentType: 'application/json',
         metadata: { 'job-uuid': job.jobUuid },
       });
+      storedObjectKeys.push(manifestKey);
 
       const updated = await markJobSuccess(job.id, {
         minioBucket: env.minio.bucket,
         minioObjectKey: objectKey,
         fileName,
-        fileSize: BigInt(fetchResult.buffer.length),
+        fileSize: BigInt(fetchResult.fileSize),
         checksumSha256: checksum,
         httpStatus: fetchResult.httpStatus,
-        rowCount: validation.rowCount,
-        errorMessage: validation.emptyData ? validation.message : undefined,
+        rowCount: fetchResult.rowCount,
+        errorMessage: fetchResult.emptyData ? 'Aucune donnée disponible pour la période sélectionnée.' : undefined,
       });
 
       return { skipped: false, job: updated, manifestKey };
@@ -174,9 +174,14 @@ export class PelagicImportOrchestrator {
         contentType: 'application/json',
       }).catch(() => undefined);
 
+      await Promise.all(
+        storedObjectKeys.map((key) => minioStorageService.deleteObject(key).catch(() => undefined))
+      );
+
       await markJobFailed(job.id, message, httpStatus);
       throw error;
     } finally {
+      await cleanupDownload?.().catch(() => undefined);
       releaseJobLock(lockKey);
     }
   }
@@ -194,28 +199,34 @@ export class PelagicImportOrchestrator {
 
     for (const range of ranges) {
       for (const exportType of exportTypes) {
-        try {
-          const result = await this.runExport({
-            exportType,
-            dateFrom: range.from,
-            dateTo: range.to,
-            imeis: request.imeis,
-            tags: request.tags,
-            deviceInfo: request.deviceInfo,
-            withLastSeen: request.withLastSeen,
-            errant: request.includeErrant,
-            force: request.force,
-            createdBy,
-            scheduleRunId: request.scheduleRunId,
-          });
-          results.push(result);
-        } catch (error) {
-          failures.push({
-            exportType,
-            dateFrom: range.from,
-            dateTo: range.to,
-            error: error instanceof Error ? error.message : 'Erreur import Pelagic',
-          });
+        const exportRanges = exportType === 'points'
+          ? splitDateRange(range.from, range.to, 1)
+          : [range];
+
+        for (const exportRange of exportRanges) {
+          try {
+            const result = await this.runExport({
+              exportType,
+              dateFrom: exportRange.from,
+              dateTo: exportRange.to,
+              imeis: request.imeis,
+              tags: request.tags,
+              deviceInfo: request.deviceInfo,
+              withLastSeen: request.withLastSeen,
+              errant: request.includeErrant,
+              force: request.force,
+              createdBy,
+              scheduleRunId: request.scheduleRunId,
+            });
+            results.push(result);
+          } catch (error) {
+            failures.push({
+              exportType,
+              dateFrom: exportRange.from,
+              dateTo: exportRange.to,
+              error: error instanceof Error ? error.message : 'Erreur import Pelagic',
+            });
+          }
         }
       }
     }

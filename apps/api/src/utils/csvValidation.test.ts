@@ -22,4 +22,11 @@ describe('validateCsvResponse', () => {
     expect(result.emptyData).toBe(true);
     expect(result.message).toContain('Aucune donnée');
   });
+
+  it('utilise le comptage complet fourni par le traitement en flux', () => {
+    const sample = Buffer.from('imei,lat,lng\n123,1,2\n');
+    const result = validateCsvResponse(sample, 'text/csv', 2_500_000);
+    expect(result.valid).toBe(true);
+    expect(result.rowCount).toBe(2_500_000);
+  });
 });

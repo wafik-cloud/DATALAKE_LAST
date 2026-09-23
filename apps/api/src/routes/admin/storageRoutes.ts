@@ -113,6 +113,52 @@ router.get('/objects/content', async (req, res) => {
   }
 });
 
+router.get('/objects/preview', async (req, res) => {
+  try {
+    const key = typeof req.query.key === 'string' ? req.query.key : '';
+    if (!key || !isAllowedObjectKey(key)) {
+      return res.status(400).json({ error: 'Clé objet invalide' });
+    }
+
+    const maxBytes = 512 * 1024;
+    const maxLines = 100;
+    const metadata = await minioStorageService.getObjectMetadata(key);
+    const stream = await minioStorageService.downloadObject(key);
+    let content = '';
+    let lines = 0;
+    let truncated = false;
+
+    for await (const chunk of stream) {
+      const remaining = maxBytes - Buffer.byteLength(content);
+      if (remaining <= 0) {
+        truncated = true;
+        break;
+      }
+      content += Buffer.from(chunk).subarray(0, remaining).toString('utf-8');
+      lines = (content.match(/\n/g) || []).length;
+      if (lines >= maxLines || Buffer.byteLength(content) >= maxBytes) {
+        truncated = true;
+        break;
+      }
+    }
+
+    if (lines >= maxLines) {
+      content = content.split(/\r?\n/).slice(0, maxLines + 1).join('\n');
+    }
+
+    res.json({
+      key,
+      content,
+      size: metadata.size,
+      contentType: String(metadata.metadata?.['content-type'] || ''),
+      truncated: truncated || Buffer.byteLength(content) < metadata.size,
+      previewBytes: Buffer.byteLength(content),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Aperçu impossible' });
+  }
+});
+
 router.delete('/objects', async (req, res) => {
   try {
     const key = typeof req.query.key === 'string' ? req.query.key : '';

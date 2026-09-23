@@ -10,10 +10,13 @@ import {
   Save,
   AlertTriangle,
   Loader2,
+  Database,
+  Gauge,
 } from 'lucide-react';
 import { adminApi } from '../../api/client';
 import PageHeader from '../../components/PageHeader';
 import LoadingOverlay from '../../components/LoadingOverlay';
+import MultiSchedulesPanel from '../../components/MultiSchedulesPanel';
 import { confirmAction, showError, showSuccess, withLoading } from '../../lib/swal';
 
 interface MonthSummary {
@@ -159,11 +162,21 @@ export default function PlanningPage() {
     return months.filter((month) => month.year === selectedYear);
   }, [months, selectedYear]);
 
-  const stats = useMemo(() => ({
-    complete: months.filter((m) => m.status === 'complete').length,
-    pending: months.filter((m) => m.status === 'pending' || m.status === 'partial').length,
-    total: months.filter((m) => m.status !== 'future').length,
-  }), [months]);
+  const stats = useMemo(() => {
+    const eligible = filteredMonths.filter((month) => month.status !== 'future');
+    const coveredDays = eligible.reduce((sum, month) => sum + month.importedDays, 0);
+    const expectedDays = eligible.reduce((sum, month) => sum + month.totalDays, 0);
+    const failedDays = eligible.reduce((sum, month) => sum + month.failedDays, 0);
+    const missingDays = eligible.reduce((sum, month) => sum + month.pendingDays, 0);
+    return {
+      coverage: expectedDays ? Math.round((coveredDays / expectedDays) * 100) : 0,
+      coveredDays,
+      expectedDays,
+      failedDays,
+      missingDays,
+      complete: eligible.filter((month) => month.status === 'complete').length,
+    };
+  }, [filteredMonths]);
 
   async function saveSchedule(e: React.FormEvent) {
     e.preventDefault();
@@ -276,6 +289,8 @@ export default function PlanningPage() {
           </button>
         )}
       />
+
+      <MultiSchedulesPanel />
 
       <section className="card schedule-card fade-in-up">
         <div className="section-title">
@@ -438,22 +453,29 @@ export default function PlanningPage() {
 
       <div className="planning-stats fade-in-up">
         <div className="mini-stat success">
-          <CheckCircle2 size={18} />
-          <span>{stats.complete} mois complets</span>
-        </div>
-        <div className="mini-stat warning">
-          <CircleDashed size={18} />
-          <span>{stats.pending} mois à compléter</span>
+          <Gauge size={18} />
+          <span><strong>{stats.coverage}%</strong> de couverture temporelle</span>
         </div>
         <div className="mini-stat">
-          <CalendarClock size={18} />
-          <span>{stats.total} mois suivis</span>
+          <Database size={18} />
+          <span><strong>{stats.coveredDays.toLocaleString('fr-FR')}</strong> / {stats.expectedDays.toLocaleString('fr-FR')} jours disponibles</span>
+        </div>
+        <div className={`mini-stat ${stats.failedDays ? 'danger' : 'success'}`}>
+          <AlertTriangle size={18} />
+          <span><strong>{stats.failedDays}</strong> jours en erreur</span>
+        </div>
+        <div className={`mini-stat ${stats.missingDays ? 'warning' : 'success'}`}>
+          <CircleDashed size={18} />
+          <span><strong>{stats.missingDays}</strong> jours à acquérir</span>
         </div>
       </div>
 
       <section className="card months-card fade-in-up">
         <div className="months-toolbar">
-          <h2>Historique mensuel (2020 → aujourd&apos;hui)</h2>
+          <div>
+            <h2>Couverture temporelle des données</h2>
+            <p className="section-subtitle">Identifiez immédiatement les lacunes qui peuvent biaiser une analyse scientifique.</p>
+          </div>
           <div className="months-toolbar-actions">
             <label className="bulk-interval-label">
               Intervalle mois non importés
@@ -477,9 +499,9 @@ export default function PlanningPage() {
             <thead>
               <tr>
                 <th>Mois</th>
-                <th>Planification</th>
-                <th>Intervalle</th>
-                <th>Progression</th>
+                <th>Couverture</th>
+                <th>Lacunes</th>
+                <th>Pas d'acquisition</th>
                 <th>Statut</th>
                 <th>Dernier import</th>
                 <th>Actions</th>
@@ -505,8 +527,18 @@ export default function PlanningPage() {
                       </div>
                     </td>
                     <td>
-                      <span className="schedule-pill">{month.scheduleTime}</span>
-                      <small>{month.scheduleTimezone}</small>
+                      <div className="progress-cell">
+                        <div className="coverage-heading"><strong>{progress}%</strong><small>{month.importedDays}/{month.totalDays} jours</small></div>
+                        <div className="progress-bar" aria-label={`Couverture ${progress}%`}>
+                          <div className="progress-fill" style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="gap-counts">
+                        <span className={month.pendingDays ? 'warning' : 'muted'}>{month.pendingDays} manquant(s)</span>
+                        <span className={month.failedDays ? 'danger' : 'muted'}>{month.failedDays} erreur(s)</span>
+                      </div>
                     </td>
                     <td>
                       {month.canEditInterval ? (
@@ -531,14 +563,6 @@ export default function PlanningPage() {
                       ) : (
                         <span>{month.intervalDays} j</span>
                       )}
-                    </td>
-                    <td>
-                      <div className="progress-cell">
-                        <div className="progress-bar">
-                          <div className="progress-fill" style={{ width: `${progress}%` }} />
-                        </div>
-                        <small>{month.importedDays}/{month.totalDays} jours</small>
-                      </div>
                     </td>
                     <td>
                       <span className={`status-pill ${meta.className}`}>{meta.label}</span>

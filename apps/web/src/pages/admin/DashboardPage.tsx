@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Database, Radio, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Database, Radio, RefreshCw, CheckCircle2, AlertTriangle, CalendarClock, MapPinned, ShipWheel, Activity } from 'lucide-react';
 import { adminApi } from '../../api/client';
 import PageHeader from '../../components/PageHeader';
 import StatCard from '../../components/StatCard';
@@ -52,10 +52,10 @@ export default function DashboardPage() {
   if (!data) return <p>Dashboard indisponible</p>;
 
   return (
-    <div>
+    <div className="scientific-dashboard">
       <PageHeader
         title="Tableau de bord"
-        subtitle="État MinIO, Pelagic et synchronisations"
+        subtitle="Couverture, acquisitions et état opérationnel des données PDS"
         actions={(
           <>
             <button type="button" className="btn" onClick={() => runTest('minio')}>Tester MinIO</button>
@@ -93,6 +93,39 @@ export default function DashboardPage() {
           hint={`Dernier trips: ${data.jobs.lastTripsExportAt ? new Date(data.jobs.lastTripsExportAt).toLocaleString('fr-FR') : '—'}`}
           tone={data.jobs.failed > 0 ? 'warning' : 'success'}
         />
+      </div>
+
+      <div className="science-kpi-grid fade-in-up">
+        <div className="science-kpi"><MapPinned size={19} /><div><strong>{Number(data.science.pointRows).toLocaleString('fr-FR')}</strong><span>positions référencées</span><small>Source : imports points réussis</small></div></div>
+        <div className="science-kpi"><ShipWheel size={19} /><div><strong>{Number(data.science.tripRows).toLocaleString('fr-FR')}</strong><span>voyages référencés</span><small>Source : imports trips réussis</small></div></div>
+        <div className="science-kpi"><CheckCircle2 size={19} /><div><strong>{data.jobs.successRate}%</strong><span>taux de succès</span><small>{data.jobs.total} traitements observés</small></div></div>
+        <div className="science-kpi"><CalendarClock size={19} /><div><strong>{data.science.activeSchedules}</strong><span>planifications actives</span><small>Source : registre PDS</small></div></div>
+        <div className="science-kpi"><Activity size={19} /><div><strong>{data.science.temporalStart || '—'}</strong><span>début de couverture</span><small>Fin : {data.science.temporalEnd || '—'}</small></div></div>
+      </div>
+
+      <div className="dashboard-analysis-grid fade-in-up">
+        <section className="dashboard-panel">
+          <div className="section-head"><h2>Activité des acquisitions sur 12 mois</h2><span className="hint">Lignes validées</span></div>
+          <div className="activity-chart" role="img" aria-label="Volume mensuel des observations importées">
+            {data.monthlyActivity.map((item: any) => {
+              const max = Math.max(1, ...data.monthlyActivity.map((entry: any) => entry.rows));
+              return <div className="activity-column" key={item.month} title={`${item.month}: ${item.rows.toLocaleString('fr-FR')} lignes`}>
+                <div className="activity-bar-wrap"><div className="activity-bar" style={{ height: `${Math.max(3, item.rows / max * 100)}%` }} /></div>
+                <strong>{item.rows.toLocaleString('fr-FR')}</strong><span>{item.month.slice(5)}</span>
+              </div>;
+            })}
+          </div>
+        </section>
+
+        <section className="dashboard-panel">
+          <div className="section-head"><h2>Occupation du stockage</h2><span className="hint">{(data.minio.totalSizeBytes / 1024 ** 3).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} Go</span></div>
+          <div className="storage-breakdown">
+            {data.storageByType.map((item: any) => <div key={item.type}>
+              <div className="storage-breakdown-head"><strong>{item.type}</strong><span>{item.files} fichiers · {(item.bytes / 1024 ** 2).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo</span></div>
+              <div className="storage-breakdown-track"><i style={{ width: `${data.minio.totalSizeBytes ? item.bytes / data.minio.totalSizeBytes * 100 : 0}%` }} /></div>
+            </div>)}
+          </div>
+        </section>
       </div>
 
       {(data.alerts.minioDown || data.alerts.pelagicDown || data.alerts.staleSync) && (

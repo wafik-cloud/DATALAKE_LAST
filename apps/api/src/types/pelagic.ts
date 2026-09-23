@@ -21,6 +21,7 @@ export interface PelagicSyncRequest {
   includeErrant?: boolean;
   force?: boolean;
   intervalDays?: 1 | 7 | 15 | 30;
+  scheduleRunId?: string;
 }
 
 export interface CsvValidationResult {

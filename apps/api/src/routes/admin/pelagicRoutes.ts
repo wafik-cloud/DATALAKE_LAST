@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { PelagicJobStatus } from '@prisma/client';
+import { PelagicJobStatus, ScheduleFrequency } from '@prisma/client';
 import { env, pelagicConfigured } from '../../config/env';
 import { maskSecret } from '../../utils/maskSecret';
 import { prisma } from '../../lib/prisma';
@@ -25,6 +25,7 @@ import { describeSchedule, resolveSchedule, timeToCron } from '../../utils/cronS
 import { getMonthlyImportOverview, getMonthDateRange } from '../../services/monthlyImportService';
 import { getMonthPlanInterval, upsertMonthPlan } from '../../repositories/monthPlanRepository';
 import { getMapPreviewSourceRow, getOrCreateMapPreview } from '../../services/mapPreviewService';
+import { createSchedule, deleteSchedule, duplicateSchedule, listSchedules, runSchedule, updateSchedule } from '../../services/multiScheduleService';
 
 const router = Router();
 router.use(requireAdmin);
@@ -171,6 +172,64 @@ router.put('/schedule', async (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : 'Planification invalide' });
   }
+});
+
+function scheduleInput(body: any) {
+  return {
+    name: String(body.name || ''), description: body.description ? String(body.description) : null,
+    enabled: body.enabled !== false, frequency: String(body.frequency || 'DAILY') as ScheduleFrequency,
+    cron: String(body.cron || ''), timezone: String(body.timezone || 'Africa/Casablanca'),
+    exportTypes: (Array.isArray(body.exportTypes) ? body.exportTypes : ['trips', 'points']) as any,
+    intervalDays: Number(body.intervalDays || 1), startDate: body.startDate || null, endDate: body.endDate || null,
+    imeis: Array.isArray(body.imeis) ? body.imeis.map(String) : [], tags: Array.isArray(body.tags) ? body.tags.map(String) : [],
+    deviceInfo: body.deviceInfo !== false, withLastSeen: body.withLastSeen !== false,
+    includeErrant: body.includeErrant === true, catchupMissing: body.catchupMissing !== false,
+    maxRetries: Number(body.maxRetries ?? 3),
+  };
+}
+
+router.get('/schedules', async (_req, res) => {
+  try {
+    const schedules = await listSchedules();
+    res.json({ schedules: schedules.map((schedule) => ({ ...schedule, runs: schedule.runs.map((run) => ({ ...run, bytesImported: run.bytesImported.toString() })) })) });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Planifications indisponibles' });
+  }
+});
+
+router.post('/schedules', async (req, res) => {
+  try {
+    const schedule = await createSchedule(scheduleInput(req.body || {}), req.header('X-User') || 'admin');
+    res.status(201).json(schedule);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Planification invalide' });
+  }
+});
+
+router.put('/schedules/:id', async (req, res) => {
+  try {
+    const schedule = await updateSchedule(paramId(req.params.id), scheduleInput(req.body || {}), req.header('X-User') || 'admin');
+    res.json(schedule);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Planification invalide' });
+  }
+});
+
+router.post('/schedules/:id/duplicate', async (req, res) => {
+  try { res.status(201).json(await duplicateSchedule(paramId(req.params.id), req.header('X-User') || 'admin')); }
+  catch (error) { res.status(404).json({ error: error instanceof Error ? error.message : 'Planification introuvable' }); }
+});
+
+router.post('/schedules/:id/run', rateLimit(3), async (req, res) => {
+  try {
+    const run = await runSchedule(paramId(req.params.id), req.header('X-User') || 'admin');
+    res.json({ ...run, bytesImported: run.bytesImported.toString() });
+  } catch (error) { res.status(500).json({ error: error instanceof Error ? error.message : 'Exécution échouée' }); }
+});
+
+router.delete('/schedules/:id', async (req, res) => {
+  try { res.json(await deleteSchedule(paramId(req.params.id), req.header('X-User') || 'admin')); }
+  catch (error) { res.status(404).json({ error: error instanceof Error ? error.message : 'Planification introuvable' }); }
 });
 
 router.get('/months', async (req, res) => {

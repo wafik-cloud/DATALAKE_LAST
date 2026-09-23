@@ -71,5 +71,23 @@ export function pointAtTrackTime(track: VesselTrack, currentTime: number): Anima
 }
 
 export function pointAtTrackProgress(track: VesselTrack, progress: number): AnimatedVesselState | null {
-  return pointAtTrackTime(track, Math.max(0, Math.min(1, progress)));
+  const points = track.points;
+  if (!points.length) return null;
+  if (points.length === 1) {
+    return { track, point: points[0], position: [points[0].lat, points[0].lng], heading: points[0].heading, travelledPoints: points };
+  }
+
+  const normalized = Math.max(0, Math.min(1, progress));
+  const exactIndex = normalized * (points.length - 1);
+  const index = Math.min(points.length - 2, Math.floor(exactIndex));
+  const ratio = exactIndex - index;
+  const from = points[index];
+  const to = points[index + 1];
+  return {
+    track,
+    point: ratio >= 1 ? to : from,
+    position: interpolatePosition(from, to, ratio),
+    heading: from.heading ?? bearing(from, to),
+    travelledPoints: points.slice(0, index + 1),
+  };
 }

@@ -20,6 +20,21 @@ enum PelagicJobStatus {
   CANCELLED
 }
 
+enum ScheduleFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+enum ScheduleRunStatus {
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+  SKIPPED
+}
+
 model PelagicImportJob {
   id              String            @id @default(cuid())
   jobUuid         String            @unique @default(uuid()) @map("job_uuid")
@@ -47,10 +62,65 @@ model PelagicImportJob {
   createdBy       String?           @map("created_by")
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
+  scheduleRunId   String?           @map("schedule_run_id")
+  scheduleRun     PelagicScheduleRun? @relation(fields: [scheduleRunId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([exportType, dateFrom, dateTo])
   @@map("pelagic_import_jobs")
+}
+
+model PelagicSchedule {
+  id                String              @id @default(cuid())
+  name              String
+  description       String?
+  enabled           Boolean             @default(true)
+  frequency         ScheduleFrequency   @default(DAILY)
+  cron              String
+  timezone          String              @default("Africa/Casablanca")
+  exportTypes       PelagicExportType[] @default([trips, points]) @map("export_types")
+  intervalDays      Int                 @default(1) @map("interval_days")
+  startDate         String?             @map("start_date")
+  endDate           String?             @map("end_date")
+  imeis             String[]            @default([])
+  tags              String[]            @default([])
+  deviceInfo        Boolean             @default(true) @map("device_info")
+  withLastSeen      Boolean             @default(true) @map("with_last_seen")
+  includeErrant     Boolean             @default(false) @map("include_errant")
+  catchupMissing    Boolean             @default(true) @map("catchup_missing")
+  maxRetries        Int                 @default(3) @map("max_retries")
+  lastRunAt         DateTime?            @map("last_run_at")
+  lastRunStatus     ScheduleRunStatus?  @map("last_run_status")
+  createdBy         String?             @map("created_by")
+  updatedBy         String?             @map("updated_by")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  runs              PelagicScheduleRun[]
+
+  @@index([enabled])
+  @@map("pelagic_schedules")
+}
+
+model PelagicScheduleRun {
+  id              String            @id @default(cuid())
+  scheduleId      String            @map("schedule_id")
+  schedule        PelagicSchedule   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  status          ScheduleRunStatus @default(RUNNING)
+  dateFrom        String            @map("date_from")
+  dateTo          String            @map("date_to")
+  jobsCreated     Int               @default(0) @map("jobs_created")
+  jobsSkipped     Int               @default(0) @map("jobs_skipped")
+  jobsFailed      Int               @default(0) @map("jobs_failed")
+  rowsImported    Int               @default(0) @map("rows_imported")
+  bytesImported   BigInt            @default(0) @map("bytes_imported")
+  errorMessage    String?           @map("error_message")
+  startedAt       DateTime          @default(now()) @map("started_at")
+  completedAt     DateTime?         @map("completed_at")
+  jobs            PelagicImportJob[]
+
+  @@index([scheduleId, startedAt])
+  @@index([status])
+  @@map("pelagic_schedule_runs")
 }
 
 model PelagicIntegrationSettings {

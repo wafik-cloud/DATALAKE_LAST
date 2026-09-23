@@ -11,6 +11,7 @@ export interface CreateJobInput {
   withLastSeen?: boolean;
   includeErrant?: boolean;
   createdBy?: string;
+  scheduleRunId?: string;
 }
 
 export async function createJob(input: CreateJobInput) {
@@ -25,6 +26,7 @@ export async function createJob(input: CreateJobInput) {
       withLastSeen: input.withLastSeen ?? true,
       includeErrant: input.includeErrant ?? false,
       createdBy: input.createdBy,
+      scheduleRunId: input.scheduleRunId,
       status: PelagicJobStatus.PENDING,
     },
   });

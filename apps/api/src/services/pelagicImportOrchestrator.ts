@@ -24,6 +24,7 @@ export interface RunExportInput extends PelagicExportOptions {
   exportType: PelagicExportType;
   createdBy?: string;
   force?: boolean;
+  scheduleRunId?: string;
 }
 
 
@@ -57,6 +58,7 @@ export class PelagicImportOrchestrator {
       withLastSeen: input.withLastSeen,
       includeErrant: input.errant,
       createdBy: input.createdBy,
+      scheduleRunId: input.scheduleRunId,
     };
 
     if (!input.force) {
@@ -204,6 +206,7 @@ export class PelagicImportOrchestrator {
             errant: request.includeErrant,
             force: request.force,
             createdBy,
+            scheduleRunId: request.scheduleRunId,
           });
           results.push(result);
         } catch (error) {

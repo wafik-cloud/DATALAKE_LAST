@@ -9,6 +9,7 @@ import storageRoutes from './routes/admin/storageRoutes';
 import pelagicRoutes from './routes/admin/pelagicRoutes';
 import dashboardRoutes from './routes/admin/dashboardRoutes';
 import maintenanceRoutes from './routes/admin/maintenanceRoutes';
+import { startMultiScheduleRegistry } from './services/multiScheduleService';
 
 const app = express();
 
@@ -34,6 +35,7 @@ async function bootstrap() {
         console.warn(`[jobs] ${stale} import(s) RUNNING obsolète(s) marqué(s) en échec`);
       }
       await startPelagicScheduler();
+      await startMultiScheduleRegistry();
       dbReady = true;
       break;
     } catch (error) {

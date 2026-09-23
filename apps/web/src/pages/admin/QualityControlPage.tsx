@@ -17,6 +17,7 @@ import PlaybackControls from '../../components/vessel-map/PlaybackControls';
 import VesselDetails from '../../components/vessel-map/VesselDetails';
 import VesselList from '../../components/vessel-map/VesselList';
 import { pointAtTrackProgress, pointAtTrackTime, globalTimeRange } from '../../lib/vesselMap/animationEngine';
+import { fleetAnalytics } from '../../lib/vesselMap/analytics';
 import { buildVesselTracks, parseVesselCsv } from '../../lib/vesselMap/csvParser';
 import { timeMs } from '../../lib/vesselMap/timeUtils';
 import type { AnimatedVesselState, VesselTrack, VesselTrackPoint } from '../../lib/vesselMap/types';
@@ -246,6 +247,7 @@ export function VesselActivityMap({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const [singleMode, setSingleMode] = useState(false);
+  const [playbackMode, setPlaybackMode] = useState<'relative' | 'clock'>('relative');
   const [selectedSnapshot, setSelectedSnapshot] = useState<AnimatedVesselState | null>(null);
   const [rawRows, setRawRows] = useState<Map<number, Record<string, string>>>(new Map());
 
@@ -256,6 +258,7 @@ export function VesselActivityMap({
     [tracks, visibleIds, singleMode, selectedId]
   );
   const usesTime = timeline.max > 1 && tracks.some((track) => track.points.some((point) => timeMs(point.time) != null));
+  const analytics = useMemo(() => fleetAnalytics(visibleTracks), [visibleTracks]);
 
   useEffect(() => {
     runIdRef.current += 1;
@@ -272,12 +275,13 @@ export function VesselActivityMap({
   }, [points, tracks]);
 
   const currentTime = usesTime ? timeline.min + (timeline.max - timeline.min) * progress : progress;
+  const usesClock = playbackMode === 'clock' && usesTime;
 
   const states = useMemo(
     () => visibleTracks
-      .map((track) => (usesTime ? pointAtTrackTime(track, currentTime) : pointAtTrackProgress(track, progress)))
+      .map((track) => (usesClock ? pointAtTrackTime(track, currentTime) : pointAtTrackProgress(track, progress)))
       .filter((state): state is AnimatedVesselState => Boolean(state)),
-    [visibleTracks, usesTime, currentTime, progress]
+    [visibleTracks, usesClock, currentTime, progress]
   );
 
   const selectedState = useMemo(() => {
@@ -383,13 +387,24 @@ export function VesselActivityMap({
   return (
     <section className="card qc-map-panel vessel-map-panel">
       <div className="section-head">
-        <h2>Carte d'activité des bateaux</h2>
+        <div>
+          <h2>Analyse spatio-temporelle de la flotte</h2>
+          <p className="section-subtitle">Comparez les trajectoires, détectez les immobilités et inspectez chaque observation.</p>
+        </div>
         <div className="actions">
           <label className="vessel-mode-toggle">
             <input type="checkbox" checked={singleMode} onChange={(event) => setSingleMode(event.target.checked)} />
             <span>Mode bateau sélectionné</span>
           </label>
         </div>
+      </div>
+
+      <div className="vessel-analysis-strip">
+        <div><strong>{analytics.totalDistanceKm.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} km</strong><span>distance observée</span></div>
+        <div><strong>{analytics.mobileVessels}/{visibleTracks.length}</strong><span>bateaux mobiles</span></div>
+        <div><strong>{analytics.observationDensity.toLocaleString('fr-FR')}</strong><span>positions / bateau</span></div>
+        <div><strong>{analytics.meanSpeedMs == null ? '—' : `${(analytics.meanSpeedMs * 1.94384).toFixed(1)} nd`}</strong><span>vitesse moyenne</span></div>
+        <div><strong>{analytics.temporalCoverage}%</strong><span>positions horodatées</span></div>
       </div>
 
       <div className="vessel-map-layout">
@@ -423,10 +438,21 @@ export function VesselActivityMap({
         }}
       />
 
+      <div className="playback-analysis-bar">
+        <div className="segmented-control" aria-label="Mode de rejeu">
+          <button type="button" className={playbackMode === 'relative' ? 'active' : ''} onClick={() => setPlaybackMode('relative')}>Comparaison des missions</button>
+          <button type="button" disabled={!usesTime} className={playbackMode === 'clock' ? 'active' : ''} onClick={() => setPlaybackMode('clock')}>Chronologie réelle</button>
+        </div>
+        <p>{playbackMode === 'relative'
+          ? 'Chaque trajectoire est normalisée sur la séquence pour comparer les comportements sans temps mort.'
+          : 'Les positions sont rejouées sur leur horodatage réel; les périodes sans émission restent visibles.'}</p>
+      </div>
+
       <div className="vessel-map-summary">
         <span>{formatNumber(points.length)} positions valides</span>
         <span>{formatNumber(tracks.length)} bateaux</span>
-        <span>{points.length ? (usesTime ? `Horloge: ${new Date(currentTime).toLocaleString('fr-FR')}` : 'Animation par ordre des points') : 'Carte initiale du Maroc'}</span>
+        <span>{points.length ? (usesClock ? `Horloge: ${new Date(currentTime).toLocaleString('fr-FR')}` : `Mission: ${Math.round(progress * 100)} %`) : 'Carte initiale du Maroc'}</span>
+        {analytics.stationaryVessels > 0 && <span className="analysis-warning">{analytics.stationaryVessels} trajectoire(s) quasi stationnaire(s)</span>}
       </div>
     </section>
   );

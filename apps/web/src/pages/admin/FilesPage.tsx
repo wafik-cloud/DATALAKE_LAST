@@ -86,7 +86,12 @@ export default function FilesPage() {
 
   async function load() {
     setLoading(true);
-    try { const res = await adminApi.storageObjects(''); setItems(res.data.items); }
+    try {
+      const res = await adminApi.storageObjects('');
+      const loadedItems = res.data.items as StorageObject[];
+      setItems(loadedItems);
+      setExpanded(new Set(collectFolderIds(buildTree(loadedItems))));
+    }
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);

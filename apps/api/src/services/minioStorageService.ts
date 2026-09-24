@@ -105,10 +105,6 @@ export class MinioStorageService {
     };
   }
 
-  async generatePresignedDownloadUrl(key: string, expirySeconds = 900): Promise<string> {
-    return this.client.presignedGetObject(env.minio.bucket, key, expirySeconds);
-  }
-
   static sha256(buffer: Buffer): string {
     return crypto.createHash('sha256').update(buffer).digest('hex');
   }

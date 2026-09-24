@@ -41,6 +41,9 @@ export interface SyncRunResult {
 
 export class PelagicImportOrchestrator {
   async runExport(input: RunExportInput) {
+    const requestedDateFrom = input.dateFrom;
+    const requestedDateTo = input.dateTo;
+
     if (input.exportType === 'points') {
       input = { ...input, ...toPelagicExclusiveDateTimeRange(input.dateFrom, input.dateTo) };
     }
@@ -93,7 +96,12 @@ export class PelagicImportOrchestrator {
       cleanupDownload = fetchResult.cleanup;
 
       const downloadedAt = new Date();
-      const objectKey = buildCsvObjectKey(input.exportType, input.dateFrom, input.dateTo, downloadedAt);
+      const objectKey = buildCsvObjectKey(
+        input.exportType,
+        requestedDateFrom,
+        requestedDateTo,
+        downloadedAt
+      );
       const checksum = fetchResult.checksumSha256;
       const fileName = objectKey.split('/').pop() || objectKey;
 
@@ -106,6 +114,8 @@ export class PelagicImportOrchestrator {
           'export-type': input.exportType,
           'date-from': input.dateFrom,
           'date-to': input.dateTo,
+          'requested-date-from': requestedDateFrom,
+          'requested-date-to': requestedDateTo,
           'imported-at': downloadedAt.toISOString(),
           'imeis': (input.imeis || []).join(','),
           'tags': (input.tags || []).join(','),
@@ -128,6 +138,8 @@ export class PelagicImportOrchestrator {
         exportType: input.exportType,
         dateFrom: input.dateFrom,
         dateTo: input.dateTo,
+        requestedDateFrom,
+        requestedDateTo,
         imeis: input.imeis || [],
         tags: input.tags || [],
         deviceInfo: input.deviceInfo ?? true,
@@ -199,34 +211,28 @@ export class PelagicImportOrchestrator {
 
     for (const range of ranges) {
       for (const exportType of exportTypes) {
-        const exportRanges = exportType === 'points'
-          ? splitDateRange(range.from, range.to, 1)
-          : [range];
-
-        for (const exportRange of exportRanges) {
-          try {
-            const result = await this.runExport({
-              exportType,
-              dateFrom: exportRange.from,
-              dateTo: exportRange.to,
-              imeis: request.imeis,
-              tags: request.tags,
-              deviceInfo: request.deviceInfo,
-              withLastSeen: request.withLastSeen,
-              errant: request.includeErrant,
-              force: request.force,
-              createdBy,
-              scheduleRunId: request.scheduleRunId,
-            });
-            results.push(result);
-          } catch (error) {
-            failures.push({
-              exportType,
-              dateFrom: exportRange.from,
-              dateTo: exportRange.to,
-              error: error instanceof Error ? error.message : 'Erreur import Pelagic',
-            });
-          }
+        try {
+          const result = await this.runExport({
+            exportType,
+            dateFrom: range.from,
+            dateTo: range.to,
+            imeis: request.imeis,
+            tags: request.tags,
+            deviceInfo: request.deviceInfo,
+            withLastSeen: request.withLastSeen,
+            errant: request.includeErrant,
+            force: request.force,
+            createdBy,
+            scheduleRunId: request.scheduleRunId,
+          });
+          results.push(result);
+        } catch (error) {
+          failures.push({
+            exportType,
+            dateFrom: range.from,
+            dateTo: range.to,
+            error: error instanceof Error ? error.message : 'Erreur import Pelagic',
+          });
         }
       }
     }

@@ -18,7 +18,8 @@ export const adminApi = {
   storageStatus: () => api.get('/api/admin/storage/status'),
   storageTest: () => api.post('/api/admin/storage/test'),
   storageObjects: (prefix = '') => api.get('/api/admin/storage/objects', { params: { prefix } }),
-  storageDownload: (key: string) => api.get('/api/admin/storage/objects/download', { params: { key } }),
+  storageDownload: (key: string) =>
+    api.get('/api/admin/storage/objects/download', { params: { key }, responseType: 'blob' }),
   storageObjectContent: (key: string) =>
     api.get('/api/admin/storage/objects/content', { params: { key }, responseType: 'blob' }),
   storageObjectPreview: (key: string) => api.get('/api/admin/storage/objects/preview', { params: { key } }),
@@ -49,3 +50,15 @@ export const adminApi = {
   pelagicCancel: (id: string) => api.post(`/api/admin/pelagic/jobs/${id}/cancel`),
   maintenanceSummary: () => api.get('/api/admin/maintenance/summary'),
 };
+
+export async function downloadStorageObject(key: string): Promise<void> {
+  const response = await adminApi.storageDownload(key);
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = key.split('/').pop() || 'data.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

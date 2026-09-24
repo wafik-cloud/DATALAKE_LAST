@@ -82,10 +82,22 @@ router.get('/objects/download', async (req, res) => {
     if (!key || !isAllowedObjectKey(key)) {
       return res.status(400).json({ error: 'Clé objet invalide' });
     }
-    const url = await minioStorageService.generatePresignedDownloadUrl(key, 900);
-    res.json({ key, url, expiresInSeconds: 900 });
+
+    const metadata = await minioStorageService.getObjectMetadata(key);
+    const stream = await minioStorageService.downloadObject(key);
+    res.setHeader('Content-Type', String(metadata.metadata?.['content-type'] || 'application/octet-stream'));
+    res.setHeader('Content-Length', String(metadata.size));
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(key.split('/').pop() || 'data.csv')}"`);
+    stream.on('error', () => {
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Lecture objet impossible' });
+      } else {
+        res.end();
+      }
+    });
+    stream.pipe(res);
   } catch (error) {
-    res.status(500).json({ error: error instanceof Error ? error.message : 'URL temporaire impossible' });
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Téléchargement impossible' });
   }
 });
 

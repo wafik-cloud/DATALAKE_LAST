@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Download, FileJson, FileSpreadsheet, FileText, Folder, FolderOpen, HardDrive, RefreshCw, Search, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
-import { adminApi } from '../../api/client';
+import { adminApi, downloadStorageObject } from '../../api/client';
 import PageHeader from '../../components/PageHeader';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import { confirmAction, showError, showSuccess, withLoading } from '../../lib/swal';
@@ -132,7 +132,7 @@ export default function FilesPage() {
   }
 
   async function downloadFile(key: string) {
-    try { const response = await adminApi.storageDownload(key); window.open(response.data.url, '_blank'); }
+    try { await downloadStorageObject(key); }
     catch (err: any) { await showError('Téléchargement impossible', err.response?.data?.error); }
   }
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Download, RotateCcw, MapPinned, X, CheckCircle2, Database, Timer, AlertTriangle } from 'lucide-react';
-import { adminApi } from '../../api/client';
+import { adminApi, downloadStorageObject } from '../../api/client';
 import PageHeader from '../../components/PageHeader';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import { confirmAction, showError, showSuccess, withLoading } from '../../lib/swal';
@@ -300,8 +300,11 @@ export default function JobsPage() {
                 )}
                 {job.minioObjectKey && (
                   <button type="button" className="btn sm" onClick={async () => {
-                    const r = await adminApi.storageDownload(job.minioObjectKey!);
-                    window.open(r.data.url, '_blank');
+                    try {
+                      await downloadStorageObject(job.minioObjectKey!);
+                    } catch (err: any) {
+                      await showError('Téléchargement impossible', err.response?.data?.error);
+                    }
                   }}><Download size={14} /> Télécharger</button>
                 )}
                 {job.exportType === 'points' && job.minioObjectKey && job.status === 'SUCCESS' && (

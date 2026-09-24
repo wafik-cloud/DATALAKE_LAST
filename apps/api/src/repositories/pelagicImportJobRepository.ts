@@ -32,8 +32,8 @@ export async function createJob(input: CreateJobInput) {
   });
 }
 
-export async function findSuccessfulDuplicate(input: CreateJobInput) {
-  return prisma.pelagicImportJob.findFirst({
+export async function findSuccessfulDuplicates(input: CreateJobInput) {
+  return prisma.pelagicImportJob.findMany({
     where: {
       exportType: input.exportType,
       dateFrom: input.dateFrom,
@@ -45,6 +45,7 @@ export async function findSuccessfulDuplicate(input: CreateJobInput) {
       includeErrant: input.includeErrant ?? false,
       status: PelagicJobStatus.SUCCESS,
     },
+    orderBy: { createdAt: 'desc' },
   });
 }
 

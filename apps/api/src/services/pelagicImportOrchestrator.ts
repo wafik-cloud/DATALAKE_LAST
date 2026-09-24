@@ -12,7 +12,7 @@ import {
 } from '../utils/jobLock';
 import {
   createJob,
-  findSuccessfulDuplicate,
+  findSuccessfulDuplicates,
   markJobFailed,
   markJobRunning,
   markJobSuccess,
@@ -64,9 +64,18 @@ export class PelagicImportOrchestrator {
     };
 
     if (!input.force) {
-      const duplicate = await findSuccessfulDuplicate(jobInput);
-      if (duplicate) {
-        return { skipped: true, job: duplicate, message: 'Import déjà réussi pour cette période et ces filtres' };
+      const duplicates = await findSuccessfulDuplicates(jobInput);
+      for (const duplicate of duplicates) {
+        const objectExists = duplicate.minioObjectKey
+          ? await minioStorageService.objectExists(duplicate.minioObjectKey)
+          : false;
+        if (objectExists) {
+          return { skipped: true, job: duplicate, message: 'Import déjà réussi pour cette période et ces filtres' };
+        }
+        await markJobFailed(
+          duplicate.id,
+          'Fichier MinIO introuvable, réimport requis'
+        );
       }
     }
 

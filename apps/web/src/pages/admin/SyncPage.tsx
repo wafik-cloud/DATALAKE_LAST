@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { adminApi } from '../../api/client';
 import PageHeader from '../../components/PageHeader';
-import { confirmAction, showError, showSuccess, withLoading } from '../../lib/swal';
+import { confirmAction, showError, showInfo, showSuccess, withLoading } from '../../lib/swal';
 
 const EXPORT_TYPE_OPTIONS = [
   { value: 'trips', label: 'Trips', description: 'Trajets consolidés', icon: ShipWheel },
@@ -62,7 +62,7 @@ export default function SyncPage() {
     if (!ok) return;
 
     try {
-      await withLoading(
+      const response = await withLoading(
         () => adminApi.pelagicSync({
           ...form,
           imeis: form.imeis ? form.imeis.split(',').map((s) => s.trim()) : undefined,
@@ -71,7 +71,34 @@ export default function SyncPage() {
         'Import en cours',
         'Téléchargement et stockage des données…'
       );
-      await showSuccess('Import terminé');
+
+      const results = Array.isArray(response.data?.results) ? response.data.results : [];
+      const failures = Array.isArray(response.data?.failures) ? response.data.failures : [];
+      const skipped = results.filter((result: any) => result.skipped);
+      const imported = results.filter((result: any) => !result.skipped);
+      const empty = imported.filter((result: any) => Number(result.job?.rowCount || 0) === 0);
+
+      if (failures.length) {
+        const details = failures
+          .map((failure: any) => `${failure.exportType} ${failure.dateFrom} → ${failure.dateTo}: ${failure.error}`)
+          .join('\n');
+        await showError('Import partiel', details);
+      } else if (imported.length === 0 && skipped.length) {
+        await showInfo(
+          'Import déjà présent',
+          `${skipped.length} export(s) existent déjà pour cette période. Activez « Forcer réexécution » pour les télécharger à nouveau.`
+        );
+      } else if (empty.length === imported.length && imported.length > 0) {
+        await showInfo('Import terminé sans données', 'Pelagic n’a retourné aucun enregistrement pour cette période.');
+      } else {
+        const importedCount = imported.length - empty.length;
+        const details = [
+          `${importedCount} nouveau(x) fichier(s) créé(s).`,
+          empty.length ? `${empty.length} export(s) sans données.` : '',
+          skipped.length ? `${skipped.length} export(s) déjà présent(s).` : '',
+        ].filter(Boolean).join(' ');
+        await showSuccess('Import terminé', details);
+      }
     } catch (err: any) {
       await showError('Import échoué', err.response?.data?.error || 'Erreur');
     }

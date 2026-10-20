@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import crypto from 'crypto';
 import { createReadStream, createWriteStream } from 'fs';
-import { mkdtemp, rm } from 'fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { Readable, Transform } from 'stream';
@@ -10,6 +10,11 @@ import { env, pelagicConfigured } from '../config/env';
 import { PelagicExportOptions, PelagicExportType } from '../types/pelagic';
 import { validateCsvResponse } from '../utils/csvValidation';
 import { redactSensitiveText } from '../utils/maskSecret';
+import {
+  joinTripsWithRegistration,
+  PelagicBoatRecord,
+  PELAGIC_TRIPS_ROW_LIMIT,
+} from './pelagicTripRegistration';
 
 export interface PelagicFetchResult {
   filePath: string;
@@ -21,6 +26,8 @@ export interface PelagicFetchResult {
   httpStatus: number;
   contentType?: string;
   attemptCount: number;
+  /** Trips joints seulement : lignes sans bateau pour ce Device Id. */
+  unmatchedBoatCount?: number;
   createReadStream(): Readable;
   cleanup(): Promise<void>;
 }
@@ -166,11 +173,72 @@ export class PelagicDataService {
   }
 
   async exportTrips(options: PelagicExportOptions): Promise<PelagicFetchResult> {
-    return this.fetchExport('trips', options);
+    const joinBoatRegistration = options.joinBoatRegistration !== false;
+    return this.fetchExport('trips', {
+      ...options,
+      joinBoatRegistration,
+      // La jointure a besoin de la colonne "Device Id" (deviceInfo=true).
+      deviceInfo: joinBoatRegistration ? true : options.deviceInfo,
+    });
   }
 
   async exportPoints(options: PelagicExportOptions): Promise<PelagicFetchResult> {
     return this.fetchExport('points', { ...options, errant: options.errant ?? env.pelagic.includeErrant });
+  }
+
+  /**
+   * GET /v1/boats/info — même jeton (chemin) et même header X-API-SECRET que les trips.
+   * Le deviceId renvoyé est l'appareil installé maintenant, pas au moment du trip.
+   */
+  private async fetchBoatsInfo(): Promise<PelagicBoatRecord[]> {
+    const url = `${env.pelagic.baseUrl}/${encodeURIComponent(env.pelagic.token)}/v1/boats/info`;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= env.pelagic.maxRetries; attempt++) {
+      try {
+        const response = await axios.get<string>(url, {
+          headers: {
+            'X-API-SECRET': env.pelagic.secret,
+            Accept: 'application/json',
+          },
+          responseType: 'text',
+          timeout: env.pelagic.httpTimeoutMs,
+          validateStatus: () => true,
+        });
+
+        const body = typeof response.data === 'string' ? response.data : String(response.data ?? '');
+        if (response.status >= 400) {
+          const redact = (text: string) => redactSensitiveText(text, [env.pelagic.token, env.pelagic.secret]);
+          const safeMessage = redact(body.slice(0, 200)).trim();
+          const err = new Error(safeMessage ? `HTTP ${response.status} boats/info: ${safeMessage}` : `HTTP ${response.status} boats/info`);
+          (err as Error & { status?: number }).status = response.status;
+          throw err;
+        }
+
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(body);
+        } catch {
+          throw new Error('boats/info: JSON invalide');
+        }
+        if (!Array.isArray(parsed)) {
+          throw new Error('boats/info: tableau JSON attendu');
+        }
+        return parsed as PelagicBoatRecord[];
+      } catch (error) {
+        lastError = error;
+        const status = (error as { status?: number }).status;
+        const permanentStatus = status === 400 || status === 401 || status === 403 || status === 404;
+        const permanentBody = error instanceof Error && error.message.startsWith('boats/info:');
+        if (attempt >= env.pelagic.maxRetries || permanentStatus || permanentBody || !this.shouldRetry(error)) break;
+        await this.delay(attempt * 2000);
+      }
+    }
+
+    const message = lastError instanceof Error ? lastError.message : 'Erreur Pelagic boats/info';
+    const err = new Error(redactSensitiveText(message, [env.pelagic.token, env.pelagic.secret]));
+    (err as Error & { status?: number }).status = (lastError as Error & { status?: number })?.status;
+    throw err;
   }
 
   async fetchExport(exportType: PelagicExportType, options: PelagicExportOptions): Promise<PelagicFetchResult> {
@@ -178,6 +246,10 @@ export class PelagicDataService {
       throw new Error('Configuration Pelagic incomplète (token/secret)');
     }
 
+    const joinRegistration = exportType === 'trips' && options.joinBoatRegistration !== false;
+    if (joinRegistration) options = { ...options, deviceInfo: true };
+    // Plafond Pelagic : 10 000 trips par requête. La plage filtre l'heure de fin du trip.
+    const boats = joinRegistration ? await this.fetchBoatsInfo() : null;
     const url = this.buildUrl(exportType, options);
     let lastError: unknown;
 
@@ -206,8 +278,50 @@ export class PelagicDataService {
           : undefined;
         const persisted = await persistCsvStream(asReadable(response.data as Readable | Buffer | ArrayBuffer), contentType);
 
+        let fileSize = persisted.fileSize;
+        let checksumSha256 = persisted.checksumSha256;
+        let rowCount = persisted.rowCount;
+        let headerLine = persisted.headerLine;
+        let emptyData = persisted.emptyData;
+        let unmatchedBoatCount: number | undefined;
+
+        if (boats) {
+          try {
+            const raw = await readFile(persisted.filePath, 'utf8');
+            const joined = joinTripsWithRegistration(raw, boats);
+            const body = Buffer.from(joined.csv, 'utf8');
+            await writeFile(persisted.filePath, body);
+            fileSize = body.length;
+            checksumSha256 = crypto.createHash('sha256').update(body).digest('hex');
+            rowCount = joined.rowCount;
+            headerLine = joined.headerLine;
+            emptyData = joined.rowCount === 0;
+            unmatchedBoatCount = joined.unmatched;
+            if (joined.deviceIdColumnMissing) {
+              console.warn('[pelagic] trips sans colonne Device Id — immatriculation laissée vide');
+            }
+            if (joined.unmatched > 0) {
+              console.log(`[pelagic] trips sans bateau pour ce Device Id: ${joined.unmatched}`);
+            }
+            if (joined.hitRowLimit) {
+              console.warn(
+                `[pelagic] export trips: ${joined.rowCount} lignes, plafond ${PELAGIC_TRIPS_ROW_LIMIT} — période peut être tronquée (filtre sur l'heure de fin)`
+              );
+            }
+          } catch (error) {
+            await persisted.cleanup().catch(() => undefined);
+            throw error;
+          }
+        }
+
         return {
           ...persisted,
+          fileSize,
+          checksumSha256,
+          rowCount,
+          headerLine,
+          emptyData,
+          unmatchedBoatCount,
           httpStatus: response.status,
           contentType,
           attemptCount: attempt,
@@ -246,7 +360,7 @@ export class PelagicDataService {
       try {
         const result =
           exportType === 'trips'
-            ? await this.exportTrips(testOptions)
+            ? await this.exportTrips({ ...testOptions, joinBoatRegistration: false })
             : await this.exportPoints({ ...testOptions, errant: false });
 
         tests.push({

@@ -69,6 +69,29 @@ docker compose logs -f minio
 docker compose down
 ```
 
+## Immatriculation des trajets Pelagic
+
+Les imports `trips` enrichissent automatiquement chaque CSV avec
+`registrationNumber`, `registrationAuthority`, `registrationExpiration`, `flag`
+et `ownerName`. La jointure reprend le script fourni dans
+`scripts/trip-registration/trips_with_registration.py` : appel à `boats/info`,
+puis correspondance entre `Device Id` du trajet et `deviceId` du bateau.
+`deviceInfo=true` est imposé pour ces imports, même si le paramètre est désactivé.
+Les colonnes d'origine sont conservées et l'expiration est écrite en date UTC
+`YYYY-MM-DD`. Le manifeste JSON indique `unmatchedBoatCount`.
+
+Un appareil sans bateau correspondant laisse les cinq cellules vides.
+L'affectation des appareils est celle d'aujourd'hui : un ancien trajet peut donc
+recevoir l'immatriculation d'un autre bateau après un transfert d'appareil.
+Les immatriculations sont recopiées telles que saisies dans Pelagic.
+La période filtre la fin des trajets et une requête est limitée à 10 000 trajets.
+
+Une période déjà importée sans ces colonnes sera réimportée lors de sa prochaine
+synchronisation. Les anciens fichiers ne sont pas modifiés en place.
+Les fichiers `points` gardent leur format actuel.
+
+Validation locale : `cd apps/api && npm test && npm run build`.
+
 ## Sécurité
 
 - Ne jamais committer `.env`

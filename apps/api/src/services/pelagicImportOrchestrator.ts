@@ -18,6 +18,7 @@ import {
   markJobSuccess,
 } from '../repositories/pelagicImportJobRepository';
 import { PelagicExportOptions, PelagicSyncRequest } from '../types/pelagic';
+import { headerHasBoatRegistration } from './pelagicTripRegistration';
 
 export interface RunExportInput extends PelagicExportOptions {
   exportType: PelagicExportType;
@@ -44,6 +45,11 @@ export class PelagicImportOrchestrator {
     const requestedDateFrom = input.dateFrom;
     const requestedDateTo = input.dateTo;
 
+    // Enregistrer les filtres réellement envoyés à Pelagic, y compris dans le manifeste.
+    if (input.exportType === 'trips' && input.joinBoatRegistration !== false) {
+      input = { ...input, deviceInfo: true };
+    }
+
     if (input.exportType === 'points') {
       input = { ...input, ...toPelagicExclusiveDateTimeRange(input.dateFrom, input.dateTo) };
     }
@@ -69,7 +75,16 @@ export class PelagicImportOrchestrator {
         const objectExists = duplicate.minioObjectKey
           ? await minioStorageService.objectExists(duplicate.minioObjectKey)
           : false;
-        if (objectExists) {
+        if (objectExists && duplicate.minioObjectKey) {
+          // A trips file imported before the boat join has no registration columns.
+          // Skipping it would keep serving that old CSV. Reimport this period only.
+          if (input.exportType === 'trips' && input.joinBoatRegistration !== false) {
+            const header = await readObjectHeaderLine(duplicate.minioObjectKey);
+            if (!headerHasBoatRegistration(header)) {
+              console.log(`[pelagic] trips sans immatriculation, réimport ${input.dateFrom} → ${input.dateTo}`);
+              break;
+            }
+          }
           return { skipped: true, job: duplicate, message: 'Import déjà réussi pour cette période et ces filtres' };
         }
         await markJobFailed(
@@ -100,6 +115,7 @@ export class PelagicImportOrchestrator {
 
       const fetchResult =
         input.exportType === 'trips'
+          // exportTrips ajoute boats/info et les colonnes d'immatriculation (jointure Device Id).
           ? await pelagicDataService.exportTrips(input)
           : await pelagicDataService.exportPoints(input);
       cleanupDownload = fetchResult.cleanup;
@@ -161,6 +177,7 @@ export class PelagicImportOrchestrator {
         checksumSha256: checksum,
         status: 'SUCCESS',
         rowCount: fetchResult.rowCount,
+        unmatchedBoatCount: fetchResult.unmatchedBoatCount,
         mapPreviewKey: mapPreview?.previewObjectKey,
         note: fetchResult.emptyData ? 'Aucune donnée disponible pour la période sélectionnée.' : undefined,
       };
@@ -248,6 +265,25 @@ export class PelagicImportOrchestrator {
 
     return { results, failures };
   }
+}
+
+async function readObjectHeaderLine(key: string): Promise<string> {
+  const stream = await minioStorageService.downloadObject(key);
+  let text = '';
+  try {
+    for await (const chunk of stream) {
+      text += Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk);
+      const newline = text.search(/\r?\n/);
+      if (newline >= 0) {
+        text = text.slice(0, newline);
+        break;
+      }
+      if (text.length > 8192) break;
+    }
+  } finally {
+    stream.destroy();
+  }
+  return text.replace(/^\uFEFF/, '').trim();
 }
 
 export const pelagicImportOrchestrator = new PelagicImportOrchestrator();

@@ -8,6 +8,11 @@ export interface PelagicExportOptions {
   withLastSeen?: boolean;
   errant?: boolean;
   tags?: string[];
+  /**
+   * Trips seulement. true (défaut) : GET /v1/boats/info puis jointure Device Id.
+   * Le test de connexion passe false pour ne pas exiger boats/info.
+   */
+  joinBoatRegistration?: boolean;
 }
 
 export interface PelagicSyncRequest {

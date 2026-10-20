@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { access } from 'fs/promises';
+import { access, readFile } from 'fs/promises';
 import { Readable } from 'stream';
+import { createHash } from 'crypto';
 
 const axiosGet = vi.fn();
 
@@ -110,6 +111,87 @@ describe('PelagicDataService.fetchExport', () => {
     await expect(access(result.filePath)).resolves.toBeUndefined();
     await result.cleanup();
     await expect(access(result.filePath)).rejects.toThrow();
+  });
+});
+
+describe('PelagicDataService.exportTrips', () => {
+  const service = new PelagicDataService();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('joint boats/info sur Device Id et ajoute les colonnes d’immatriculation', async () => {
+    axiosGet
+      .mockResolvedValueOnce({
+        status: 200,
+        data: JSON.stringify([
+          {
+            deviceId: 'dev-1',
+            registrationNumber: 'MA-1',
+            registrationAuthority: 'DPM',
+            registrationExpiration: Date.parse('2027-01-15T00:00:00Z'),
+            flag: 'MAR',
+            ownerName: 'Armateur',
+          },
+        ]),
+        headers: { 'content-type': 'application/json' },
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: Readable.from([Buffer.from('Trip,Boat Name,Device Id\nT1,Bateau A,dev-1\nT2,Bateau B,absent\n')]),
+        headers: { 'content-type': 'text/csv' },
+      });
+
+    const result = await service.exportTrips({
+      dateFrom: '2026-10-14',
+      dateTo: '2026-10-15',
+      deviceInfo: false,
+    });
+
+    const boatsUrl = String(axiosGet.mock.calls[0][0]);
+    const tripsUrl = String(axiosGet.mock.calls[1][0]);
+    expect(boatsUrl).toContain('/v1/boats/info');
+    expect(boatsUrl).not.toContain('test-secret');
+    expect(tripsUrl).toContain('/v1/trips/2026-10-14/2026-10-15');
+    expect(tripsUrl).toContain('deviceInfo=true');
+    expect(axiosGet.mock.calls[0][1].headers['X-API-SECRET']).toBe('test-secret');
+
+    const csv = await readFile(result.filePath, 'utf8');
+    expect(csv.split('\n')[0]).toBe(
+      'Trip,Boat Name,Device Id,registrationNumber,registrationAuthority,registrationExpiration,flag,ownerName'
+    );
+    expect(csv).toContain('T1,Bateau A,dev-1,MA-1,DPM,2027-01-15,MAR,Armateur');
+    expect(csv).toContain('T2,Bateau B,absent,,,,,');
+    expect(result.unmatchedBoatCount).toBe(1);
+    expect(result.rowCount).toBe(2);
+    expect(result.fileSize).toBe(Buffer.byteLength(csv));
+    expect(result.checksumSha256).toBe(createHash('sha256').update(csv).digest('hex'));
+    await result.cleanup();
+  });
+
+  it('impose Device Id même via fetchExport avec deviceInfo désactivé', async () => {
+    axiosGet.mockResolvedValueOnce({ status: 200, data: '[]', headers: {} })
+      .mockResolvedValueOnce({
+        status: 200, data: Buffer.from('Trip,Device Id\n'),
+        headers: { 'content-type': 'text/csv' },
+      });
+    const result = await service.fetchExport('trips', {
+      dateFrom: '2026-10-01', dateTo: '2026-10-02', deviceInfo: false,
+    });
+    try {
+      expect(String(axiosGet.mock.calls[1][0])).toContain('deviceInfo=true');
+      expect(result.rowCount).toBe(0);
+      expect(result.emptyData).toBe(true);
+      expect(result.headerLine).toContain('registrationNumber');
+    } finally { await result.cleanup(); }
+  });
+
+  it('remonte un refus boats/info sans publier un export faussement enrichi', async () => {
+    axiosGet.mockResolvedValueOnce({ status: 401, data: 'test-secret test-token', headers: {} });
+    await expect(service.exportTrips({ dateFrom: '2026-10-01', dateTo: '2026-10-02' }))
+      .rejects.toThrow(/HTTP 401 boats\/info/);
+    expect(axiosGet).toHaveBeenCalledTimes(1);
   });
 });
 

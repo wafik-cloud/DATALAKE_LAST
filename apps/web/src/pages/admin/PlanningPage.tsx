@@ -468,7 +468,7 @@ export default function PlanningPage() {
         <div className="months-toolbar">
           <div>
             <h2>Couverture temporelle des données</h2>
-            <p className="section-subtitle">Identifiez immédiatement les lacunes qui peuvent biaiser une analyse scientifique.</p>
+            <p className="section-subtitle">Couverture des imports échus, vérifiée dans les fichiers et manifestes MinIO. Trajets et points GPS sont requis pour chaque journée.</p>
           </div>
           <div className="months-toolbar-actions">
             <label className="bulk-interval-label">
@@ -487,6 +487,11 @@ export default function PlanningPage() {
           </div>
         </div>
 
+        <p className="section-subtitle">
+          Une journée correspond à une période complète de minuit à minuit ou de {schedule.time} à {schedule.time} le lendemain ({schedule.timezone}).
+          Les périodes du cron sont rattachées à leur date de début. La période en cours n’est pas comptée comme manquante.
+          Cette couverture décrit les périodes exportées ; elle ne garantit pas la continuité de chaque capteur GPS.
+        </p>
         <div className="erp-table-panel" style={{ border: '1px solid var(--erp-border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
         <div className="table-wrap">
           <table className="data-table months-table">

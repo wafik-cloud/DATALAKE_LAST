@@ -89,6 +89,7 @@ export async function buildExplorerItems(objects: ObjectEntry[], jobs: Job[], lo
       dateTo: text(m?.dateTo) || job?.dateTo || null,
       importedAt: text(m?.downloadedAt) || job?.completedAt?.toISOString() || null,
       status: job?.status || text(m?.status) || 'UNKNOWN',
+      coverageEligible: arrayKey(period.imeis) === '[]' && arrayKey(period.tags) === '[]',
       metadataSource: manifest ? 'manifest' : job ? 'history' : 'none',
       manifestKey: manifest?.key || null,
       unmatchedBoatCount: count(m?.unmatchedBoatCount), errors,

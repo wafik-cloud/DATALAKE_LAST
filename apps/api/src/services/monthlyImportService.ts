@@ -4,6 +4,8 @@ import { describeSchedule, resolveSchedule } from '../utils/cronSchedule';
 import { getIntegrationSettings } from '../repositories/integrationSettingsRepository';
 import { getMonthPlanMap } from '../repositories/monthPlanRepository';
 import { env } from '../config/env';
+import { getStorageExplorer } from './storageExplorerService';
+import { buildCoverage, importInterval, localCoverageClock, DAY } from '../utils/importCoverage';
 
 export type MonthImportStatus = 'complete' | 'partial' | 'pending' | 'future' | 'running';
 
@@ -40,17 +42,6 @@ function padDate(year: number, month: number, day: number): string {
 
 function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-
-function enumerateDays(dateFrom: string, dateTo: string): string[] {
-  const days: string[] = [];
-  const cursor = new Date(`${dateFrom}T00:00:00Z`);
-  const end = new Date(`${dateTo}T00:00:00Z`);
-  while (cursor <= end) {
-    days.push(cursor.toISOString().slice(0, 10));
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  return days;
 }
 
 function listEligibleDays(year: number, month: number, today: string): string[] {
@@ -103,11 +94,11 @@ export async function getMonthlyImportOverview(fromYear = 2020): Promise<{
 }> {
   const settings = await getIntegrationSettings();
   const exportTypes: PelagicExportType[] = env.pelagic.syncExportTypes;
-  const today = new Date().toISOString().slice(0, 10);
+  const resolved = resolveSchedule(settings);
+  const { today, lastDueDay } = localCoverageClock(new Date(), settings.syncTimezone, resolved.syncTime);
   const currentYear = Number(today.slice(0, 4));
   const currentMonth = Number(today.slice(5, 7));
 
-  const resolved = resolveSchedule(settings);
   const scheduleTime = resolved.syncTime;
   const intervalDays = settings.syncIntervalDays || 1;
   const monthPlanMap = await getMonthPlanMap();
@@ -143,47 +134,21 @@ export async function getMonthlyImportOverview(fromYear = 2020): Promise<{
       completedAt: true,
       failedAt: true,
       updatedAt: true,
+      imeis: true,
+      tags: true,
     },
   });
 
-  const successDays = new Set<string>();
-  const failedDays = new Set<string>();
-  const runningDays = new Set<string>();
-  let lastImportAt: Date | null = null;
-
-  for (const job of jobs) {
-    const stamp = job.completedAt || job.failedAt || job.updatedAt;
-    if (stamp && (!lastImportAt || stamp > lastImportAt)) lastImportAt = stamp;
-
-    if (job.status === PelagicJobStatus.RUNNING) {
-      for (const day of enumerateDays(job.dateFrom, job.dateTo)) {
-        runningDays.add(day);
-      }
-    }
-
-    if (job.status === PelagicJobStatus.FAILED && job.dateFrom === job.dateTo) {
-      failedDays.add(job.dateFrom);
-    }
-
-    if (job.status === PelagicJobStatus.SUCCESS) {
-      const coveredDays = enumerateDays(job.dateFrom, job.dateTo);
-      for (const day of coveredDays) {
-        const daySuccessTypes = new Set(
-          jobs
-            .filter(
-              (item) =>
-                item.status === PelagicJobStatus.SUCCESS &&
-                day >= item.dateFrom &&
-                day <= item.dateTo
-            )
-            .map((item) => item.exportType)
-        );
-        if (exportTypes.every((type) => daySuccessTypes.has(type))) {
-          successDays.add(day);
-        }
-      }
-    }
-  }
+  // Count existing CSVs, including imports predating the restored DB history.
+  const { items, unreadableMetadata } = await getStorageExplorer();
+  if (unreadableMetadata) throw new Error('Couverture indisponible : des métadonnées MinIO sont illisibles.');
+  const available = items.filter(item => item.status === 'SUCCESS' && item.coverageEligible);
+  const isCovered = buildCoverage(available, exportTypes, scheduleTime);
+  const attempts = jobs.filter(job => job.imeis.length === 0 && job.tags.length === 0);
+  const coveredByType = new Map(exportTypes.map(type => [type, buildCoverage(available, [type], scheduleTime)]));
+  const hasUnresolvedAttempt = (status: PelagicJobStatus, day: string) => attempts.some(job =>
+    job.status === status && buildCoverage([job], [job.exportType], scheduleTime)(day) &&
+    !coveredByType.get(job.exportType)?.(day));
 
   const months: MonthSummary[] = [];
 
@@ -194,7 +159,7 @@ export async function getMonthlyImportOverview(fromYear = 2020): Promise<{
     for (let month = minMonth; month <= maxMonth; month++) {
       const dateFrom = padDate(year, month, 1);
       const dateTo = padDate(year, month, daysInMonth(year, month));
-      const eligibleDays = listEligibleDays(year, month, today);
+      const eligibleDays = listEligibleDays(year, month, lastDueDay);
 
       if (monthIsFuture(year, month, today)) {
         months.push(
@@ -223,9 +188,9 @@ export async function getMonthlyImportOverview(fromYear = 2020): Promise<{
         continue;
       }
 
-      const imported = eligibleDays.filter((day) => successDays.has(day)).length;
-      const failed = eligibleDays.filter((day) => failedDays.has(day) && !successDays.has(day)).length;
-      const running = eligibleDays.some((day) => runningDays.has(day));
+      const imported = eligibleDays.filter((day) => isCovered(day)).length;
+      const failed = eligibleDays.filter((day) => hasUnresolvedAttempt(PelagicJobStatus.FAILED, day) && !isCovered(day)).length;
+      const running = eligibleDays.some((day) => hasUnresolvedAttempt(PelagicJobStatus.RUNNING, day));
       const pending = Math.max(0, eligibleDays.length - imported - failed);
 
       let status: MonthImportStatus = 'pending';
@@ -234,11 +199,16 @@ export async function getMonthlyImportOverview(fromYear = 2020): Promise<{
       else if (imported === eligibleDays.length) status = 'complete';
       else if (imported > 0 || failed > 0) status = 'partial';
 
-      const monthLastImport = jobs
-        .filter((job) => job.dateFrom.slice(0, 7) === `${year}-${String(month).padStart(2, '0')}`)
-        .map((job) => job.completedAt || job.failedAt || job.updatedAt)
-        .filter(Boolean)
-        .sort((a, b) => (b!.getTime() - a!.getTime()))[0];
+      const monthStart = Date.parse(`${dateFrom}T00:00:00Z`);
+      const monthEnd = Date.parse(`${dateTo}T00:00:00Z`) + DAY;
+      const monthLastImport = available
+        .filter(item => {
+          const range = importInterval(item);
+          return range && range[0] < monthEnd && range[1] > monthStart;
+        })
+        .map(item => item.importedAt ? new Date(item.importedAt) : null)
+        .filter((stamp): stamp is Date => stamp !== null && Number.isFinite(stamp.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime())[0];
 
       months.push(
         buildMonthSummary(

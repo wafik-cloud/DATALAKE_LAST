@@ -81,10 +81,9 @@ function zonedTimeToUtc(
 
   for (let attempt = 0; attempt < 6; attempt++) {
     const parts = getZonedParts(new Date(guess), timeZone);
-    const desiredMinutes = hour * 60 + minute;
-    const actualMinutes = parts.hour * 60 + parts.minute;
-    const dayOffset = day - parts.day;
-    const deltaMinutes = dayOffset * 24 * 60 + (desiredMinutes - actualMinutes);
+    const desiredDate = Date.UTC(year, month - 1, day, hour, minute);
+    const actualDate = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
+    const deltaMinutes = (desiredDate - actualDate) / (60 * 1000);
     if (deltaMinutes === 0) break;
     guess += deltaMinutes * 60 * 1000;
   }
@@ -98,9 +97,9 @@ export function getNextDailyRun(time: string, timezone: string, from = new Date(
   let candidate = zonedTimeToUtc(today.year, today.month, today.day, hour, minute, timezone);
 
   if (candidate <= from) {
-    const tomorrowBase = new Date(from.getTime() + 36 * 60 * 60 * 1000);
-    const tomorrow = getZonedParts(tomorrowBase, timezone);
-    candidate = zonedTimeToUtc(tomorrow.year, tomorrow.month, tomorrow.day, hour, minute, timezone);
+    // Advance the local calendar date, rather than adding hours to the current instant.
+    const tomorrow = new Date(Date.UTC(today.year, today.month - 1, today.day + 1));
+    candidate = zonedTimeToUtc(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth() + 1, tomorrow.getUTCDate(), hour, minute, timezone);
   }
 
   return candidate;

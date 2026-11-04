@@ -5,6 +5,7 @@ import { requireAdmin } from '../../middleware/requireAdmin';
 import { isAllowedObjectKey } from '../../utils/objectKeys';
 import { getJobById } from '../../repositories/pelagicImportJobRepository';
 import { writeAuditLog } from '../../repositories/auditLogRepository';
+import { getStorageExplorer } from '../../services/storageExplorerService';
 
 const router = Router();
 
@@ -13,6 +14,13 @@ function paramId(value: string | string[]): string {
 }
 
 router.use(requireAdmin);
+
+router.get('/explorer', async (_req, res) => {
+  try { res.json(await getStorageExplorer()); }
+  catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Explorateur indisponible' });
+  }
+});
 
 router.get('/status', async (_req, res) => {
   try {

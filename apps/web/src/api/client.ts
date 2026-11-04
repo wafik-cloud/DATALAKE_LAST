@@ -18,6 +18,7 @@ export const adminApi = {
   storageStatus: () => api.get('/api/admin/storage/status'),
   storageTest: () => api.post('/api/admin/storage/test'),
   storageObjects: (prefix = '') => api.get('/api/admin/storage/objects', { params: { prefix } }),
+  storageExplorer: () => api.get('/api/admin/storage/explorer'),
   storageDownload: (key: string) =>
     api.get('/api/admin/storage/objects/download', { params: { key }, responseType: 'blob' }),
   storageObjectContent: (key: string) =>

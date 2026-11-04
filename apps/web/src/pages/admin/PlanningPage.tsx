@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import '../../styles/dailyAutomation.css';
 import {
   CalendarClock,
   CheckCircle2,
@@ -12,6 +13,9 @@ import {
   Loader2,
   Database,
   Gauge,
+  Globe2,
+  History,
+  Layers3,
 } from 'lucide-react';
 import { adminApi } from '../../api/client';
 import PageHeader from '../../components/PageHeader';
@@ -293,78 +297,68 @@ export default function PlanningPage() {
       <MultiSchedulesPanel />
 
       <section className="card schedule-card fade-in-up">
-        <div className="section-title">
-          <CalendarClock size={22} />
-          <div>
-            <h2>Import automatique quotidien</h2>
-            <p>Exemple : chaque nuit à 01:00, importer automatiquement la journée de la veille.</p>
-          </div>
-        </div>
-
-        {draft && (
-          <form className="schedule-form" onSubmit={saveSchedule}>
-            <label className="toggle-field">
-              <input
-                type="checkbox"
-                checked={draft.enabled}
-                onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
-              />
-              <span>Activer l&apos;import automatique</span>
-            </label>
-            <label>
-              Heure d&apos;exécution
-              <input
-                type="time"
-                value={draft.time}
-                onChange={(e) => setDraft({ ...draft, time: e.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Fuseau horaire
-              <select value={draft.timezone} onChange={(e) => setDraft({ ...draft, timezone: e.target.value })}>
-                {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
-              </select>
-            </label>
-            <label>
-              Intervalle (jours)
-              <select
-                value={draft.intervalDays}
-                onChange={(e) => setDraft({ ...draft, intervalDays: Number(e.target.value) })}
-              >
-                {[1, 7, 15, 30].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </label>
-            <button type="submit" className="btn primary">
-              <Save size={16} /> Enregistrer la planification
-            </button>
-          </form>
-        )}
-
-        <p className="schedule-hint">
-          <Clock3 size={16} />
-          {schedule.description || 'Planification non configurée'}
-        </p>
-        <div className="schedule-status-grid">
-          <div className={`schedule-status-card ${schedule.schedulerActive ? 'ok' : 'ko'}`}>
-            <strong>Planificateur</strong>
-            <span>{schedule.schedulerActive ? 'Actif' : 'Inactif'}</span>
-          </div>
-          <div className="schedule-status-card">
-            <strong>Prochaine exécution</strong>
-            <span>
-              {schedule.nextRunAt
-                ? new Date(schedule.nextRunAt).toLocaleString('fr-FR', { timeZone: schedule.timezone })
-                : '—'}
+        <div className="daily-automation">
+          <header className="daily-automation-header">
+            <div className="daily-automation-title">
+              <span className="daily-automation-emblem"><CalendarClock size={23} /></span>
+              <div><span className="daily-automation-eyebrow">SYNCHRONISATION PELAGIC</span>
+                <h2>Import automatique quotidien</h2>
+                <p>Planifiez la collecte de vos trajets et points GPS.</p>
+              </div>
+            </div>
+            <span className={`daily-automation-badge ${schedule.schedulerActive ? 'active' : 'inactive'}`}>
+              <span />{schedule.schedulerActive ? 'Planificateur actif' : 'Planificateur inactif'}
             </span>
-          </div>
-          <div className="schedule-status-card">
-            <strong>Dernier import auto (cron)</strong>
-            <span>
-              {schedule.lastAutomaticSyncAt
-                ? new Date(schedule.lastAutomaticSyncAt).toLocaleString('fr-FR', { timeZone: schedule.timezone })
-                : 'Jamais — attendez la prochaine exécution ou testez via « Sync maintenant »'}
-            </span>
+          </header>
+
+          {draft && <form className="daily-automation-form" onSubmit={saveSchedule}>
+            <div className={`daily-automation-enable ${draft.enabled ? 'enabled' : ''}`}>
+              <label className="daily-automation-switch-label">
+                <input type="checkbox" role="switch" checked={draft.enabled}
+                  onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />
+                <span className="daily-automation-switch" aria-hidden="true" />
+                <span><strong>Activer l’import automatique</strong><small>Exécuter les imports selon les réglages ci-dessous.</small></span>
+              </label>
+              <span className="daily-automation-enable-state">{draft.enabled ? 'Activé' : 'Désactivé'}</span>
+            </div>
+            <div className="daily-automation-fields">
+              <label><span><Clock3 size={15} /> Heure d’exécution</span>
+                <input type="time" value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} required />
+                <small>Heure locale du fuseau choisi</small>
+              </label>
+              <label><span><Globe2 size={15} /> Fuseau horaire</span>
+                <select value={draft.timezone} onChange={(e) => setDraft({ ...draft, timezone: e.target.value })}>
+                  {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
+                </select><small>Référence pour la planification</small>
+              </label>
+              <label><span><Layers3 size={15} /> Intervalle (jours)</span>
+                <select value={draft.intervalDays} onChange={(e) => setDraft({ ...draft, intervalDays: Number(e.target.value) })}>
+                  {INTERVAL_OPTIONS.map(n => <option key={n} value={n}>{n} {n === 1 ? 'jour' : 'jours'}</option>)}
+                </select><small>Intervalle des imports</small>
+              </label>
+            </div>
+            <div className="daily-automation-footer">
+              <div className="daily-automation-recap"><Clock3 size={18} /><div>
+                <strong>{draft.enabled ? `Chaque jour à ${draft.time}` : 'Import automatique désactivé'}</strong>
+                <span>{draft.timezone} · {draft.enabled !== schedule.enabled || draft.time !== schedule.time || draft.timezone !== schedule.timezone || draft.intervalDays !== schedule.intervalDays ? 'Modifications à enregistrer' : 'Configuration enregistrée'}</span>
+              </div></div>
+              <button type="submit" className="btn primary daily-automation-save"><Save size={17} /> Enregistrer la planification</button>
+            </div>
+          </form>}
+
+          <div className="daily-automation-status" aria-label="État de la planification enregistrée">
+            <div className="daily-automation-stat">
+              <span className={`daily-automation-stat-icon ${schedule.schedulerActive ? 'active' : ''}`}><CheckCircle2 size={19} /></span>
+              <div><span>Planificateur</span><strong className={schedule.schedulerActive ? 'daily-automation-ok' : ''}>{schedule.schedulerActive ? 'Opérationnel' : 'Inactif'}</strong><small>{schedule.enabled ? 'Import automatique activé' : 'Import automatique désactivé'}</small></div>
+            </div>
+            <div className="daily-automation-stat">
+              <span className="daily-automation-stat-icon"><CalendarClock size={19} /></span>
+              <div><span>Prochaine exécution</span><strong>{schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleDateString('fr-FR', { timeZone: schedule.timezone, day: '2-digit', month: 'long', year: 'numeric' }) : 'Non programmée'}</strong><small>{schedule.nextRunAt ? `À ${new Date(schedule.nextRunAt).toLocaleTimeString('fr-FR', { timeZone: schedule.timezone, hour: '2-digit', minute: '2-digit' })} · ${schedule.timezone}` : 'Activez et enregistrez la planification'}</small></div>
+            </div>
+            <div className="daily-automation-stat">
+              <span className="daily-automation-stat-icon"><History size={19} /></span>
+              <div><span>Dernier import automatique</span><strong>{schedule.lastAutomaticSyncAt ? new Date(schedule.lastAutomaticSyncAt).toLocaleDateString('fr-FR', { timeZone: schedule.timezone, day: '2-digit', month: 'long', year: 'numeric' }) : 'Aucune exécution'}</strong><small>{schedule.lastAutomaticSyncAt ? `À ${new Date(schedule.lastAutomaticSyncAt).toLocaleTimeString('fr-FR', { timeZone: schedule.timezone, hour: '2-digit', minute: '2-digit' })} · déclenché par le cron` : 'L’historique apparaîtra après le premier import'}</small></div>
+            </div>
           </div>
         </div>
         {!schedule.schedulerActive && (

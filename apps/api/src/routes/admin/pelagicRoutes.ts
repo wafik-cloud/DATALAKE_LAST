@@ -4,7 +4,7 @@ import { env, pelagicConfigured } from '../../config/env';
 import { maskSecret } from '../../utils/maskSecret';
 import { prisma } from '../../lib/prisma';
 import { pelagicDataService } from '../../services/pelagicDataService';
-import { assertSyncProducedResults, pelagicImportOrchestrator } from '../../services/pelagicImportOrchestrator';
+import { assertSyncProducedResults, pelagicImportOrchestrator, type SyncRunResult } from '../../services/pelagicImportOrchestrator';
 import { requireAdmin } from '../../middleware/requireAdmin';
 import { rateLimit } from '../../middleware/rateLimit';
 import { runDailyPelagicSync, restartPelagicScheduler, getSchedulerStatusResolved, getLastAutomaticSync, getRecentAutomaticSyncEvents } from '../../jobs/pelagicSyncScheduler';
@@ -22,7 +22,7 @@ import { writeAuditLog } from '../../repositories/auditLogRepository';
 import { PelagicExportType } from '../../types/pelagic';
 import { serializeSyncRun } from '../../utils/serializeJob';
 import { describeSchedule, resolveSchedule, timeToCron } from '../../utils/cronSchedule';
-import { getMonthlyImportOverview, getMonthDateRange } from '../../services/monthlyImportService';
+import { getMonthlyImportOverview, getMissingMonthImports } from '../../services/monthlyImportService';
 import { getMonthPlanInterval, upsertMonthPlan } from '../../repositories/monthPlanRepository';
 import { getMapPreviewSourceRow, getOrCreateMapPreview } from '../../services/mapPreviewService';
 import { createSchedule, deleteSchedule, duplicateSchedule, listSchedules, runSchedule, updateSchedule } from '../../services/multiScheduleService';
@@ -289,28 +289,31 @@ router.post('/months/:year/:month/sync', rateLimit(3), async (req, res) => {
       return res.status(400).json({ error: 'Année ou mois invalide' });
     }
 
+    if (req.body?.force === true || req.body?.exportTypes) {
+      return res.status(400).json({ error: 'Le rattrapage mensuel importe uniquement les données manquantes des types actifs.' });
+    }
+    const overview = await getMonthlyImportOverview(year);
+    const summary = overview.months.find(item => item.year === year && item.month === month);
+    if (!summary || summary.status === 'future' || summary.status === 'complete') {
+      return res.json({ message: 'Aucune donnée échue manquante : aucun import lancé.', results: [], failures: [] });
+    }
+    if (summary.status === 'running') return res.status(409).json({ error: 'Un import est déjà en cours pour ce mois.' });
     const settings = await getIntegrationSettings();
-    const { dateFrom, dateTo } = getMonthDateRange(year, month);
-    const body = req.body || {};
     const savedInterval = await getMonthPlanInterval(year, month);
-    const intervalDays =
-      body.intervalDays ?? savedInterval ?? settings.syncIntervalDays ?? 1;
-
-    const run = await pelagicImportOrchestrator.runSync(
-      {
-        exportTypes: body.exportTypes as PelagicExportType[] | undefined,
-        dateFrom,
-        dateTo,
-        imeis: settings.defaultImeis,
-        tags: settings.defaultTags,
-        deviceInfo: settings.deviceInfo,
-        withLastSeen: settings.withLastSeen,
-        includeErrant: settings.includeErrant,
-        force: body.force === true,
-        intervalDays,
-      },
-      req.header('X-User') || 'admin'
-    );
+    const intervalDays = req.body?.intervalDays ?? savedInterval ?? settings.syncIntervalDays ?? 1;
+    const { dateFrom, dateTo, ranges } = await getMissingMonthImports(year, month, intervalDays);
+    const run: SyncRunResult = { results: [], failures: [] };
+    for (const range of ranges) {
+      const chunk = await pelagicImportOrchestrator.runSync({
+        exportTypes: [range.exportType as PelagicExportType],
+        dateFrom: range.dateFrom, dateTo: range.dateTo,
+        imeis: settings.defaultImeis, tags: settings.defaultTags,
+        deviceInfo: settings.deviceInfo, withLastSeen: settings.withLastSeen,
+        includeErrant: settings.includeErrant, force: false, intervalDays,
+      }, req.header('X-User') || 'admin');
+      run.results.push(...chunk.results);
+      run.failures.push(...chunk.failures);
+    }
 
     await writeAuditLog(
       'PELAGIC_MONTH_SYNC',

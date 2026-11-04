@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   CircleDashed,
   Clock3,
-  Download,
   Play,
   RefreshCw,
   Save,
@@ -256,20 +255,25 @@ export default function PlanningPage() {
   }
 
   async function importMonth(month: MonthSummary) {
+    if (month.status === 'complete' || month.status === 'future' || month.status === 'running') return;
     const ok = await confirmAction(
-      `Importer ${month.label}`,
-      `Période ${month.dateFrom} → ${month.dateTo} (intervalle ${month.intervalDays} jour(s))`
+      `Compléter ${month.label}`,
+      `Importer uniquement les périodes manquantes jusqu’au ${month.dateTo}. Les données déjà présentes seront conservées.`
     );
     if (!ok) return;
 
     setImportingKey(month.key);
     try {
-      await withLoading(
+      const response = await withLoading(
         () => adminApi.pelagicImportMonth(month.year, month.month, { intervalDays: month.intervalDays }),
         'Import en cours',
         `Téléchargement des données ${month.label}…`
       );
-      await showSuccess('Import lancé', `${month.label} traité avec succès.`);
+      if (response.data.failures?.length) {
+        await showError('Rattrapage partiel', `${response.data.failures.length} période(s) en échec. Le tableau sera actualisé.`);
+      } else {
+        await showSuccess('Rattrapage terminé', response.data.message || `${month.label} complété.`);
+      }
       load();
     } catch (err: any) {
       await showError('Import échoué', err.response?.data?.error || 'Erreur lors de l\'import');
@@ -572,7 +576,7 @@ export default function PlanningPage() {
                         : '—'}
                     </td>
                     <td className="actions-cell">
-                      {month.status !== 'future' && (
+                      {month.status !== 'future' && month.status !== 'complete' && (
                         <button
                           type="button"
                           className="btn sm primary"
@@ -580,12 +584,12 @@ export default function PlanningPage() {
                           onClick={() => importMonth(month)}
                         >
                           {importingKey === month.key ? <Loader2 className="spin" size={14} /> : <Play size={14} />}
-                          Importer
+                          Compléter
                         </button>
                       )}
                       {month.status === 'complete' && (
-                        <span className="icon-action ok" title="Mois importé avec succès">
-                          <Download size={14} />
+                        <span className="icon-action ok" title="À jour : toutes les périodes échues sont importées">
+                          <CheckCircle2 size={14} /> À jour
                         </span>
                       )}
                     </td>

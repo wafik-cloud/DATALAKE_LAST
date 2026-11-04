@@ -5,7 +5,7 @@ import { getIntegrationSettings } from '../repositories/integrationSettingsRepos
 import { getMonthPlanMap } from '../repositories/monthPlanRepository';
 import { env } from '../config/env';
 import { getStorageExplorer } from './storageExplorerService';
-import { buildCoverage, importInterval, localCoverageClock, DAY } from '../utils/importCoverage';
+import { buildCoverage, importInterval, localCoverageClock, planMissingImports, DAY } from '../utils/importCoverage';
 
 export type MonthImportStatus = 'complete' | 'partial' | 'pending' | 'future' | 'running';
 
@@ -250,4 +250,18 @@ export function getMonthDateRange(year: number, month: number): { dateFrom: stri
   let dateTo = padDate(year, month, lastDay);
   if (dateTo > today) dateTo = today;
   return { dateFrom, dateTo };
+}
+
+
+export async function getMissingMonthImports(year: number, month: number, intervalDays: number) {
+  if (!Number.isInteger(intervalDays) || intervalDays < 1 || intervalDays > 31) throw new Error('Intervalle invalide');
+  const settings = await getIntegrationSettings();
+  if (settings.defaultImeis.length || settings.defaultTags.length) throw new Error('Le rattrapage mensuel nécessite une flotte sans filtre IMEI ou tag.');
+  const time = resolveSchedule(settings).syncTime;
+  const { lastDueDay } = localCoverageClock(new Date(), settings.syncTimezone, time);
+  const days = listEligibleDays(year, month, lastDueDay);
+  const { items, unreadableMetadata } = await getStorageExplorer();
+  if (unreadableMetadata) throw new Error('Couverture indisponible : des métadonnées MinIO sont illisibles.');
+  const ranges = planMissingImports(days, items.filter(i => i.status === 'SUCCESS' && i.coverageEligible), env.pelagic.syncExportTypes, time, intervalDays);
+  return { dateFrom: days[0] || null, dateTo: days[days.length - 1] || null, ranges };
 }

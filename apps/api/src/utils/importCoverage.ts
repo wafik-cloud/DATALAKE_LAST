@@ -45,3 +45,41 @@ export function localCoverageClock(now: Date, timezone: string, time: string) {
   const lastDueDay = new Date(Date.parse(`${today}T00:00:00Z`) - DAY * (beforeRun ? 2 : 1)).toISOString().slice(0, 10);
   return { today, lastDueDay };
 }
+
+/** Subtract stored intervals before submitting any download, even partial overlaps. */
+export function planMissingImports(days: string[], ranges: CoverageRange[], types: readonly string[], time: string, intervalDays: number) {
+  const [hour, minute] = time.split(':').map(Number);
+  const offset = (hour * 60 + minute) * 60_000;
+  const byType = new Map(types.map(type => [type, mergeIntervals(ranges.filter(r => r.exportType === type)
+    .map(importInterval).filter((r): r is Interval => r !== null))]));
+  const subtract = (window: Interval, stored: Interval[]) => {
+    let cursor = window[0];
+    const missing: Interval[] = [];
+    for (const [from, to] of stored) {
+      if (to <= cursor) continue;
+      if (from >= window[1]) break;
+      if (from > cursor) missing.push([cursor, Math.min(from, window[1])]);
+      cursor = Math.max(cursor, to);
+      if (cursor >= window[1]) break;
+    }
+    if (cursor < window[1]) missing.push([cursor, window[1]]);
+    return missing;
+  };
+  const gaps = new Map(types.map(type => [type, [] as Interval[]]));
+  for (const day of days) {
+    const start = Date.parse(`${day}T00:00:00Z`);
+    const options = [start, start + offset].map(from => types.map(type => ({ type,
+      missing: subtract([from, from + DAY], byType.get(type) || []) })));
+    const duration = (option: typeof options[number]) => option.reduce((sum, entry) => sum + entry.missing.reduce((n, [a, b]) => n + b - a, 0), 0);
+    const chosen = duration(options[0]) <= duration(options[1]) ? options[0] : options[1];
+    for (const { type, missing } of chosen) gaps.get(type)!.push(...missing);
+  }
+  const format = (stamp: number) => new Date(stamp).toISOString().slice(0, 19).replace('T', ' ');
+  return types.flatMap(exportType => mergeIntervals(gaps.get(exportType)!).flatMap(([from, to]) => {
+    const chunks: Array<{ exportType: string; dateFrom: string; dateTo: string }> = [];
+    for (let cursor = from; cursor < to; cursor += intervalDays * DAY) {
+      chunks.push({ exportType, dateFrom: format(cursor), dateTo: format(Math.min(to, cursor + intervalDays * DAY)) });
+    }
+    return chunks;
+  }));
+}

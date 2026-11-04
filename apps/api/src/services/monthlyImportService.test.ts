@@ -3,9 +3,9 @@ const mocks = vi.hoisted(() => ({ jobs: vi.fn(), explorer: vi.fn() }));
 vi.mock('../lib/prisma', () => ({ prisma: { pelagicImportJob: { findMany: mocks.jobs } } }));
 vi.mock('./storageExplorerService', () => ({ getStorageExplorer: mocks.explorer }));
 vi.mock('../config/env', () => ({ env: { pelagic: { syncExportTypes: ['trips', 'points'] } } }));
-vi.mock('../repositories/integrationSettingsRepository', () => ({ getIntegrationSettings: async () => ({ syncEnabled: true, syncTime: '01:00', syncTimezone: 'UTC', syncIntervalDays: 1 }) }));
+vi.mock('../repositories/integrationSettingsRepository', () => ({ getIntegrationSettings: async () => ({ syncEnabled: true, syncTime: '01:00', syncTimezone: 'UTC', syncIntervalDays: 1, defaultImeis: [], defaultTags: [] }) }));
 vi.mock('../repositories/monthPlanRepository', () => ({ getMonthPlanMap: async () => new Map() }));
-import { getMonthlyImportOverview } from './monthlyImportService';
+import { getMonthlyImportOverview, getMissingMonthImports } from './monthlyImportService';
 const files = (dateFrom = '2026-11-01 01:00:00', dateTo = '2026-11-04 01:00:00') => ['trips', 'points'].map(exportType => ({
   exportType, dateFrom, dateTo, status: 'SUCCESS', coverageEligible: true, importedAt: '2026-11-04T13:36:50Z', rowCount: 0,
 }));
@@ -33,4 +33,18 @@ describe('monthly reconciliation', () => {
     mocks.explorer.mockResolvedValue({ items: [], unreadableMetadata: 1 });
     await expect(november()).rejects.toThrow('métadonnées MinIO');
   });
+});
+
+it('plans only closed missing periods and never downloads complete months', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-11-04T14:00:00Z'));
+  try {
+    mocks.explorer.mockResolvedValue({ items: files(), unreadableMetadata: 0 });
+    expect((await getMissingMonthImports(2026, 11, 1)).ranges).toEqual([]);
+    mocks.explorer.mockResolvedValue({ items: [], unreadableMetadata: 0 });
+    const plan = await getMissingMonthImports(2026, 11, 1);
+    expect(plan.dateTo).toBe('2026-11-03');
+    expect(plan.ranges).toHaveLength(6);
+    expect(plan.ranges.every(r => r.dateTo <= '2026-11-04 00:00:00')).toBe(true);
+  } finally { vi.useRealTimers(); }
 });

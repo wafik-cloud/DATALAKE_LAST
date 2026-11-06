@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { api } from '../api/client';
 import { useAuth } from '../lib/auth';
 import InrhBrand from '../components/InrhBrand';
@@ -12,9 +12,38 @@ export default function LoginPage() {
   const [setup, setSetup] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState({ login: '', password: '', confirm: '', email: '', name: '', key: '' });
   useEffect(() => { api.get('/api/auth/status').then(r => setSetup(r.data.setupRequired)).catch(() => setMessage('La plateforme est momentanément indisponible.')); }, []);
-  const field = (key: keyof typeof form, label: string, type = 'text') => <label className="login-field"><span>{label}</span><input type={type} required value={form[key]} minLength={key === 'password' || key === 'confirm' ? 12 : undefined} maxLength={key === 'password' || key === 'confirm' ? 128 : 254} autoComplete={key === 'password' ? mode === 'login' ? 'current-password' : 'new-password' : key === 'login' ? 'username' : undefined} onChange={e => setForm({ ...form, [key]: e.target.value })} /></label>;
+  const field = (key: keyof typeof form, label: string, type = 'text') => (
+    <div className="login-field">
+      <label htmlFor={`login-${key}`}>{label}</label>
+      <div className="login-input-wrap">
+        <input
+          id={`login-${key}`}
+          type={type === 'password' && visiblePasswords[key] ? 'text' : type}
+          required
+          value={form[key]}
+          minLength={key === 'password' || key === 'confirm' ? 12 : undefined}
+          maxLength={key === 'password' || key === 'confirm' ? 128 : 254}
+          autoComplete={key === 'password' ? mode === 'login' ? 'current-password' : 'new-password' : key === 'login' ? 'username' : key === 'email' ? 'email' : undefined}
+          onChange={e => setForm({ ...form, [key]: e.target.value })}
+          className={type === 'password' ? 'login-password-input' : undefined}
+        />
+        {type === 'password' && (
+          <button
+            type="button"
+            className="login-password-toggle"
+            aria-label={`${visiblePasswords[key] ? 'Masquer' : 'Afficher'} : ${label}`}
+            aria-pressed={Boolean(visiblePasswords[key])}
+            onClick={() => setVisiblePasswords({ ...visiblePasswords, [key]: !visiblePasswords[key] })}
+          >
+            {visiblePasswords[key] ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
   async function submit(e: FormEvent) {
     e.preventDefault(); setBusy(true); setMessage('');
     try {
@@ -26,19 +55,41 @@ export default function LoginPage() {
     } catch (e: any) { setMessage(e.response?.data?.error || e.message || 'Opération impossible.'); }
     finally { setBusy(false); }
   }
-  return <div className="login-page fade-in"><div className="login-shell fade-in-up"><div className="login-hero"><InrhBrand variant="login" title="PDS VESSEL TRACKING" /><p className="login-hero-text">Votre espace de suivi et de gestion des données halieutiques.</p><p className="login-hero-text">Accès personnel · Droits attribués · Activités tracées</p></div><form className="login-card" onSubmit={submit}>
-    <div className="login-card-brand">
-      <InrhBrand variant="compact" />
-    </div>
-    <h2>{mode === 'login' ? 'Connexion à la plateforme' : mode === 'forgot' ? 'Mot de passe oublié' : mode === 'setup' ? 'Premier administrateur' : 'Nouveau mot de passe'}</h2>
-    {mode === 'setup' && <>{field('name', 'Nom complet')}{field('email', 'Email déclaré', 'email')}{field('key', 'Clé d’initialisation administrateur', 'password')}</>}
-    {(mode === 'login' || mode === 'setup') && field('login', 'Identifiant')}
-    {mode === 'forgot' && <><p>Utilisez l’adresse email enregistrée par votre administrateur.</p>{field('email', 'Adresse email', 'email')}</>}
-    {mode !== 'forgot' && field('password', mode === 'login' ? 'Mot de passe' : 'Mot de passe (12 caractères minimum)', 'password')}
-    {(mode === 'reset' || mode === 'setup') && field('confirm', 'Confirmer le mot de passe', 'password')}
-    {message && <p className="access-message" role="status">{message}</p>}
-    <button disabled={busy} className="btn primary" type="submit"><ShieldCheck size={16} />{busy ? 'Veuillez patienter…' : mode === 'login' ? 'Se connecter' : mode === 'forgot' ? 'Envoyer le lien' : 'Enregistrer'}</button>
-    <button type="button" className="btn" onClick={() => { setMode(mode === 'login' ? 'forgot' : 'login'); setMessage(''); }}>{mode === 'login' ? 'Mot de passe oublié ?' : 'Retour à la connexion'}</button>
-    {setup && mode === 'login' && <button type="button" className="btn" onClick={() => setMode('setup')}>Initialiser le premier administrateur</button>}
-  </form></div></div>;
+  const title = mode === 'login' ? 'Bienvenue' : mode === 'forgot' ? 'Mot de passe oublié' : mode === 'setup' ? 'Premier administrateur' : 'Nouveau mot de passe';
+
+  return (
+    <main className="login-page fade-in">
+      <div className="login-shell fade-in-up">
+        <form className="login-card" onSubmit={submit} aria-labelledby="login-title">
+          <div className="login-card-brand"><InrhBrand variant="compact" /></div>
+          <header className="login-heading">
+            <p className="login-platform-name">PDS Vessel Tracking</p>
+            <h1 id="login-title">{title}</h1>
+            <p className="login-description">
+              {mode === 'login' ? 'Connectez-vous à votre espace de travail.' : mode === 'forgot' ? 'Saisissez l’adresse email enregistrée par votre administrateur.' : mode === 'setup' ? 'Créez le compte administrateur de la plateforme.' : 'Choisissez votre nouveau mot de passe.'}
+            </p>
+          </header>
+
+          <div className="login-fields">
+            {mode === 'setup' && <>{field('name', 'Nom complet')}{field('email', 'Email déclaré', 'email')}{field('key', 'Clé d’initialisation administrateur', 'password')}</>}
+            {(mode === 'login' || mode === 'setup') && field('login', 'Identifiant')}
+            {mode === 'forgot' && field('email', 'Adresse email', 'email')}
+            {mode !== 'forgot' && field('password', mode === 'login' ? 'Mot de passe' : 'Mot de passe (12 caractères minimum)', 'password')}
+            {(mode === 'reset' || mode === 'setup') && field('confirm', 'Confirmer le mot de passe', 'password')}
+          </div>
+
+          {message && <p className="access-message" role="status">{message}</p>}
+          <button disabled={busy} className="btn primary login-submit" type="submit">
+            {busy ? 'Veuillez patienter…' : mode === 'login' ? 'Se connecter' : mode === 'forgot' ? 'Envoyer le lien' : 'Enregistrer'}
+            {!busy && <ArrowRight size={17} />}
+          </button>
+          <button type="button" className="login-secondary" onClick={() => { setMode(mode === 'login' ? 'forgot' : 'login'); setMessage(''); setVisiblePasswords({}); }}>
+            {mode === 'login' ? 'Mot de passe oublié ?' : 'Retour à la connexion'}
+          </button>
+          {setup && mode === 'login' && <button type="button" className="login-secondary" onClick={() => setMode('setup')}>Initialiser le premier administrateur</button>}
+        </form>
+        <p className="login-footer">Plateforme de suivi des données halieutiques</p>
+      </div>
+    </main>
+  );
 }

@@ -1,3 +1,4 @@
+import { Can } from '../../lib/auth';
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Download, RotateCcw, MapPinned, X, CheckCircle2, Database, Timer, AlertTriangle } from 'lucide-react';
 import { adminApi, downloadStorageObject } from '../../api/client';
@@ -189,7 +190,7 @@ export default function JobsPage() {
             {detailJob.errorMessage || 'Aucun message d\'erreur enregistré'}
           </p>
           {detailJob.status === 'FAILED' && (
-            <button
+            <Can permission="imports.run"><button
               type="button"
               className="btn sm"
               onClick={async () => {
@@ -205,7 +206,7 @@ export default function JobsPage() {
               }}
             >
               <RotateCcw size={14} /> Relancer cet import
-            </button>
+            </button></Can>
           )}
         </section>
       )}
@@ -284,7 +285,7 @@ export default function JobsPage() {
                   <button type="button" className="btn sm" onClick={() => openJobDetail(job)}>Détail</button>
                 )}
                 {job.status === 'FAILED' && (
-                  <button type="button" className="btn sm" onClick={async () => {
+                  <Can permission="imports.run"><button type="button" className="btn sm" onClick={async () => {
                     const ok = await confirmAction('Relancer', `${job.exportType} — ${job.dateFrom}`);
                     if (!ok) return;
                     try {
@@ -296,16 +297,16 @@ export default function JobsPage() {
                     }
                   }}>
                     <RotateCcw size={14} /> Relancer
-                  </button>
+                  </button></Can>
                 )}
                 {job.minioObjectKey && (
-                  <button type="button" className="btn sm" onClick={async () => {
+                  <Can permission="files.download"><button type="button" className="btn sm" onClick={async () => {
                     try {
                       await downloadStorageObject(job.minioObjectKey!);
                     } catch (err: any) {
                       await showError('Téléchargement impossible', err.response?.data?.error);
                     }
-                  }}><Download size={14} /> Télécharger</button>
+                  }}><Download size={14} /> Télécharger</button></Can>
                 )}
                 {job.exportType === 'points' && job.minioObjectKey && job.status === 'SUCCESS' && (
                   <button type="button" className="btn sm" onClick={() => openJobMap(job)}>

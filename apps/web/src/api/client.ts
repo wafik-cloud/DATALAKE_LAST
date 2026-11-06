@@ -2,15 +2,10 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
-export const api = axios.create({ baseURL: API_URL });
-
-api.interceptors.request.use((config) => {
-  const key = localStorage.getItem('adminApiKey');
-  if (key) {
-    config.headers['X-Admin-Key'] = key;
-    config.headers['X-User'] = localStorage.getItem('adminUser') || 'admin';
-  }
-  return config;
+export const api = axios.create({ baseURL: API_URL, withCredentials: true });
+api.interceptors.response.use(response => response, error => {
+  if (error.response?.status === 401 && !window.location.pathname.startsWith('/login') && !error.config?.url?.startsWith('/api/auth/me')) window.location.assign('/login');
+  return Promise.reject(error);
 });
 
 export const adminApi = {

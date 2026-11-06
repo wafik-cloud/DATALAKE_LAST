@@ -1,3 +1,4 @@
+import { Can } from '../../lib/auth';
 import { useEffect, useMemo, useState } from 'react';
 import '../../styles/dailyAutomation.css';
 import {
@@ -320,7 +321,7 @@ export default function PlanningPage() {
                 <strong>{draft.enabled ? `Chaque jour à ${draft.time}` : 'Import automatique désactivé'}</strong>
                 <span>{draft.timezone} · {draft.enabled !== schedule.enabled || draft.time !== schedule.time || draft.timezone !== schedule.timezone || draft.intervalDays !== schedule.intervalDays ? 'Modifications à enregistrer' : 'Configuration enregistrée'}</span>
               </div></div>
-              <button type="submit" className="btn primary daily-automation-save"><Save size={17} /> Enregistrer la planification</button>
+              <Can permission="planning.manage"><button type="submit" className="btn primary daily-automation-save"><Save size={17} /> Enregistrer la planification</button></Can>
             </div>
           </form>}
 
@@ -380,9 +381,9 @@ export default function PlanningPage() {
                 {INTERVAL_OPTIONS.map((n) => <option key={n} value={n}>{n} j</option>)}
               </select>
             </label>
-            <button type="button" className="btn sm" onClick={applyBulkInterval}>
+            <Can permission="planning.manage"><button type="button" className="btn sm" onClick={applyBulkInterval}>
               <Save size={14} /> Appliquer à la sélection
-            </button>
+            </button></Can>
             <select value={String(selectedYear)} onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}>
               <option value="all">Toutes les années</option>
               {years.map((year) => <option key={year} value={year}>{year}</option>)}
@@ -476,7 +477,7 @@ export default function PlanningPage() {
                     </td>
                     <td className="actions-cell">
                       {month.status !== 'future' && month.status !== 'complete' && (
-                        <button
+                        <Can permission="imports.run"><button
                           type="button"
                           className="btn sm primary"
                           disabled={importingKey === month.key || month.status === 'running'}
@@ -484,7 +485,7 @@ export default function PlanningPage() {
                         >
                           {importingKey === month.key ? <Loader2 className="spin" size={14} /> : <Play size={14} />}
                           Compléter
-                        </button>
+                        </button></Can>
                       )}
                       {month.status === 'complete' && (
                         <span className="icon-action ok" title="À jour : toutes les périodes échues sont importées">

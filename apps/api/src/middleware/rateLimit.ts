@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 
-const buckets = new Map<string, { count: number; resetAt: number }>();
-
 export function rateLimit(maxPerMinute = 10) {
+  const buckets = new Map<string, { count: number; resetAt: number }>();
   return (req: Request, res: Response, next: NextFunction): void => {
     const key = req.ip || 'unknown';
     const now = Date.now();
+    if (buckets.size > 1000) for (const [ip, entry] of buckets) if (entry.resetAt < now) buckets.delete(ip);
     const entry = buckets.get(key);
 
     if (!entry || now > entry.resetAt) {

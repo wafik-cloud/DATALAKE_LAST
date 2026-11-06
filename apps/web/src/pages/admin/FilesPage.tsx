@@ -1,3 +1,4 @@
+import { Can } from '../../lib/auth';
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Download, FileSpreadsheet, Folder, FolderOpen, HardDrive, RefreshCw, Search, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
@@ -177,7 +178,7 @@ export default function FilesPage() {
               {selected.item?.lastModified && <div><dt>Modifié</dt><dd>{new Date(selected.item.lastModified).toLocaleString('fr-FR')}</dd></div>}
             </dl>
             {selected.errors.length > 0 && <div className="storage-import-errors"><strong>Tentatives en échec associées</strong><ul>{selected.errors.map(error => <li key={error.id}>{error.at && <small>{new Date(error.at).toLocaleString('fr-FR', { timeZone: 'Africa/Casablanca' })} — </small>}{error.message}</li>)}</ul></div>}
-            {selected.kind === 'file' && selected.item && <div className="storage-detail-actions"><button type="button" className="btn primary" onClick={() => downloadFile(selected.item!.key)}><Download size={15} /> Télécharger</button><button type="button" className="btn danger" onClick={() => removeFile(selected.item!.key)}><Trash2 size={15} /> Supprimer</button></div>}
+            {selected.kind === 'file' && selected.item && <div className="storage-detail-actions"><Can permission="files.download"><button type="button" className="btn primary" onClick={() => downloadFile(selected.item!.key)}><Download size={15} /> Télécharger</button></Can><Can permission="files.delete"><button type="button" className="btn danger" onClick={() => removeFile(selected.item!.key)}><Trash2 size={15} /> Supprimer</button></Can></div>}
           </> : <div className="storage-detail-empty"><Folder size={34} /><strong>Sélectionnez un élément</strong><span>Les informations du dossier ou du fichier apparaîtront ici.</span></div>}
         </aside>
       </div>

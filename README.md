@@ -97,3 +97,14 @@ Validation locale : `cd apps/api && npm test && npm run build`.
 - Ne jamais committer `.env`
 - Ne pas utiliser les valeurs `CHANGE_ME` en production
 - Bucket `pelagic-data` privé ; téléchargements via URL pré-signées uniquement
+
+
+### Utilisateurs et sécurité
+
+L’accès utilise des comptes nominatifs et des cookies de session HttpOnly (12 h maximum, 30 min d’inactivité). Les mots de passe sont hachés avec scrypt ; les jetons de session et de récupération sont stockés sous forme de SHA-256. L’ancienne clé ne donne plus accès aux API métier. Lorsque la base ne contient aucun utilisateur, elle sert uniquement à initialiser le premier administrateur depuis la connexion. Un changement du mot de passe initial est imposé.
+
+Le menu **Administration → Utilisateurs & accès** permet de créer et désactiver les comptes, d’attribuer les écrans et les actions, de révoquer les sessions et de consulter le journal d’activité. Les changements d’accès ferment les sessions de l’utilisateur. Le dernier administrateur actif est protégé. Les droits sont vérifiés côté API ; masquer un bouton ne constitue pas la protection. **Mon compte & sécurité** permet de changer son mot de passe et fermer ses sessions. Le journal conserve les accès aux écrans et API ainsi que les paramètres métier sélectionnés, sans mots de passe ni jetons.
+
+Configurer `APP_PUBLIC_URL` avec l’URL exacte du frontend, et `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASSWORD` pour les emails. SMTP exige TLS (465 ou STARTTLS). Les liens de récupération expirent après 30 minutes et sont à usage unique ; la récupération ferme les sessions existantes. En HTTPS, activer `COOKIE_SECURE=true`. Sans SMTP, la page Administration signale que les envois ne sont pas configurés.
+
+Vérification des parcours d’authentification avec une **base isolée vide** : appliquer les migrations sur cette base, puis exécuter les tests API avec `DATABASE_URL` et `AUTH_TEST_DATABASE_URL` désignant cette même base. Ces tests créent leurs propres comptes et ne doivent jamais viser la production. L’envoi SMTP y est simulé ; le reste du parcours utilise PostgreSQL et HTTP réels.

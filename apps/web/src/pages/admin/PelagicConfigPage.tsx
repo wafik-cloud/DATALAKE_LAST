@@ -1,3 +1,4 @@
+import { Can } from '../../lib/auth';
 import { useEffect, useState } from 'react';
 import { adminApi } from '../../api/client';
 
@@ -90,7 +91,7 @@ PELAGIC_API_SECRET=votre_secret`}</pre>
           <p><strong>Secret (masqué) :</strong> {settings.secret}</p>
           <p><strong>URL API :</strong> {settings.baseUrl}</p>
         </div>
-        <button type="button" className="btn primary" onClick={testPelagic}>Tester la connexion</button>
+        <Can permission="settings.manage"><button type="button" className="btn primary" onClick={testPelagic}>Tester la connexion</button></Can>
         {testResult && (
           <div className="test-result-panel">
             <p className={testResult.ok ? 'ok' : 'ko'}>{testResult.message}</p>
@@ -120,7 +121,7 @@ PELAGIC_API_SECRET=votre_secret`}</pre>
         <label><input type="checkbox" checked={form.deviceInfo} onChange={(e) => setSettings({ ...form, deviceInfo: e.target.checked })} /> deviceInfo</label>
         <label><input type="checkbox" checked={form.withLastSeen} onChange={(e) => setSettings({ ...form, withLastSeen: e.target.checked })} /> withLastSeen</label>
         <label><input type="checkbox" checked={form.includeErrant} onChange={(e) => setSettings({ ...form, includeErrant: e.target.checked })} /> errant (points)</label>
-        <button className="btn primary" type="submit">Enregistrer</button>
+        <Can permission="settings.manage"><button className="btn primary" type="submit">Enregistrer</button></Can>
         {message && <p className="ok">{message}</p>}
       </form>
     </div>

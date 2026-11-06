@@ -2377,3 +2377,47 @@ input:focus, select:focus {
   .schedule-item { grid-template-columns: 1fr; }
   .schedule-item-status { grid-column: auto; }
 }
+
+/* Identity and access management */
+.access-page { display:grid; gap:24px; max-width:1500px; margin:auto; color:#24364b; }
+.access-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.access-heading h1 { font-size:28px; letter-spacing:-.7px; margin:7px 0; }
+.access-heading p,.access-form p { color:#6b7c90; line-height:1.6; margin:6px 0; }
+.access-eyebrow { color:#167f85; font-size:11px; font-weight:800; letter-spacing:1.5px; }
+.access-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.access-stat { display:grid; grid-template-columns:40px 1fr; background:white; border:1px solid #e2e9f0; padding:22px; border-radius:12px; gap:4px 14px; }
+.access-stat svg { grid-row:span 2; align-self:center; color:#167f85; }
+.access-stat strong { font-size:29px; line-height:1.2; }
+.access-stat span { color:#6b7c90; font-size:13px; }
+.access-card { background:white; border:1px solid #e2e9f0; border-radius:12px; padding:24px; min-width:0; }
+.access-card h2 { margin-top:0; font-size:19px; }
+.access-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.access-tabs { display:flex; gap:20px; flex-wrap:wrap; }
+.access-tabs button { display:flex; align-items:center; gap:8px; background:none; border:0; padding:14px 0; border-bottom:2px solid transparent; color:#6b7c90; cursor:pointer; font-weight:600; }
+.access-tabs button.active { border-color:#167f85; color:#167f85; }
+.access-search { display:flex; align-items:center; gap:12px; max-width:420px; margin:22px 0; border:1px solid #dce4ed; border-radius:8px; padding:0 12px; }
+.access-search input { border:0; outline:0; width:100%; padding:12px 0; background:none; }
+.access-table-wrap { overflow:auto; }
+.access-table { border-collapse:collapse; width:100%; font-size:13px; text-align:left; }
+.access-table th { background:#f5f8fb; color:#6b7c90; font-size:11px; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
+.access-table th,.access-table td { padding:16px 12px; border-bottom:1px solid #eaf0f5; vertical-align:middle; }
+.access-table small,.access-form small { display:block; color:#7d8b9b; font-size:11px; margin-top:5px; max-width:260px; overflow-wrap:anywhere; }
+.access-badge { display:inline-block; padding:5px 9px; border-radius:5px; background:#fff1e4; color:#9a591b; font-size:11px; white-space:nowrap; }
+.access-badge.enabled { background:#e7f5ef; color:#217b5e; }
+.access-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.access-message { padding:15px 18px; background:#eff6fb; color:#365c7d; border:1px solid #d7e5f1; border-radius:8px; font-size:13px; line-height:1.6; }
+.access-hint { color:#7d8b9b; padding:12px 0; font-size:12px; }
+.access-modal-backdrop { position:fixed; inset:0; background:#132b486b; z-index:2000; display:flex; align-items:center; justify-content:center; padding:24px; backdrop-filter:blur(3px); }
+.access-modal { background:white; border-radius:16px; padding:28px; max-width:850px; width:100%; max-height:90vh; overflow:auto; box-shadow:0 30px 100px #10284040; }
+.access-modal h2 { margin:8px 0 18px; }
+.access-form { display:grid; gap:20px; }
+.access-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.access-form label { display:grid; align-content:start; gap:8px; font-size:13px; font-weight:600; }
+.access-form input:not([type=checkbox]) { border:1px solid #d9e3ec; border-radius:7px; padding:11px; width:100%; box-sizing:border-box; max-width:600px; }
+.access-choice { display:flex; gap:25px; flex-wrap:wrap; padding:16px; background:#f5f8fb; border-radius:8px; }
+.access-choice label,.access-permissions label { display:flex; gap:10px; align-items:center; }
+.access-permissions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.access-permissions label { border:1px solid #e2e9f0; border-radius:7px; padding:12px; }
+.access-permissions input { accent-color:#167f85; }
+.access-form h3 { margin:0; }
+@media(max-width:800px) { .access-heading { align-items:flex-start; flex-direction:column; } .access-stats { grid-template-columns:1fr; } .access-form-grid,.access-permissions { grid-template-columns:1fr; } .access-toolbar { align-items:flex-start; flex-direction:column; } .access-modal { padding:20px; } .access-card { padding:16px; } }

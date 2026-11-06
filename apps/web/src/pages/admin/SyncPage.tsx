@@ -1,3 +1,4 @@
+import { Can } from '../../lib/auth';
 import { FormEvent, useState } from 'react';
 import {
   CalendarDays,
@@ -258,9 +259,9 @@ export default function SyncPage() {
             </label>
           </div>
 
-          <button className="btn primary sync-submit" type="submit" disabled={!periodReady}>
+          <Can permission="imports.run"><button className="btn primary sync-submit" type="submit" disabled={!periodReady}>
             <Play size={16} /> Lancer l&apos;import
-          </button>
+          </button></Can>
           <button
             className="btn sync-reset"
             type="button"

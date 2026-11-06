@@ -1,3 +1,4 @@
+import { Can } from '../lib/auth';
 import { useEffect, useState } from 'react';
 import { CalendarClock, Copy, Play, Plus, Save, Trash2, X } from 'lucide-react';
 import { adminApi } from '../api/client';
@@ -70,19 +71,19 @@ export default function MultiSchedulesPanel() {
   return <section className="named-schedules-section fade-in-up">
     <div className="section-head">
       <div><h2>Scénarios d&apos;acquisition</h2><p className="section-subtitle">Planifications indépendantes par source, période et flotte.</p></div>
-      <button type="button" className="btn primary" onClick={() => beginEdit()}><Plus size={15} /> Nouvelle planification</button>
+      <Can permission="planning.manage"><button type="button" className="btn primary" onClick={() => beginEdit()}><Plus size={15} /> Nouvelle planification</button></Can>
     </div>
     <div className="named-schedules-grid">
       {schedules.map((schedule) => <article className="schedule-item" key={schedule.id}>
-        <button type="button" className="schedule-item-main" onClick={() => beginEdit(schedule)}>
+        <Can permission="planning.manage"><button type="button" className="schedule-item-main" onClick={() => beginEdit(schedule)}>
           <span className={`schedule-state ${schedule.enabled ? 'active' : ''}`}><CalendarClock size={18} /></span>
           <span><strong>{schedule.name}</strong><small>{schedule.frequency} · {schedule.cron} · {schedule.timezone}</small><small>{schedule.exportTypes.join(' + ')} · pas {schedule.intervalDays} j</small></span>
-        </button>
+        </button></Can>
         <div className="schedule-item-status"><span className={`badge ${schedule.lastRunStatus || 'PENDING'}`}>{schedule.lastRunStatus || 'JAMAIS EXÉCUTÉE'}</span><small>{schedule.lastRunAt ? new Date(schedule.lastRunAt).toLocaleString('fr-FR') : 'Aucune exécution'}</small></div>
         <div className="schedule-item-actions">
-          <button type="button" className="erp-icon-btn dark" title="Exécuter maintenant" onClick={async () => { await withLoading(() => adminApi.pelagicRunSchedule(schedule.id), 'Exécution', 'Import planifié en cours…'); await load(); }}><Play size={15} /></button>
-          <button type="button" className="erp-icon-btn dark" title="Dupliquer" onClick={async () => { await adminApi.pelagicDuplicateSchedule(schedule.id); await load(); }}><Copy size={15} /></button>
-          <button type="button" className="erp-icon-btn danger-icon" title="Supprimer" onClick={async () => { if (await confirmAction('Supprimer la planification', schedule.name, 'Supprimer')) { await adminApi.pelagicDeleteSchedule(schedule.id); await load(); } }}><Trash2 size={15} /></button>
+          <Can permission="imports.run"><button type="button" className="erp-icon-btn dark" title="Exécuter maintenant" onClick={async () => { await withLoading(() => adminApi.pelagicRunSchedule(schedule.id), 'Exécution', 'Import planifié en cours…'); await load(); }}><Play size={15} /></button></Can>
+          <Can permission="planning.manage"><button type="button" className="erp-icon-btn dark" title="Dupliquer" onClick={async () => { await adminApi.pelagicDuplicateSchedule(schedule.id); await load(); }}><Copy size={15} /></button></Can>
+          <Can permission="planning.manage"><button type="button" className="erp-icon-btn danger-icon" title="Supprimer" onClick={async () => { if (await confirmAction('Supprimer la planification', schedule.name, 'Supprimer')) { await adminApi.pelagicDeleteSchedule(schedule.id); await load(); } }}><Trash2 size={15} /></button></Can>
         </div>
       </article>)}
       {!schedules.length && <div className="schedule-empty">Aucun scénario indépendant. Créez une planification pour automatiser une flotte ou un type d&apos;export.</div>}
@@ -116,7 +117,7 @@ export default function MultiSchedulesPanel() {
           <label><input type="checkbox" checked={form.includeErrant} onChange={(e) => setForm({ ...form, includeErrant: e.target.checked })} /> Positions errantes</label>
         </div>
       </div>
-      <div className="schedule-editor-footer"><button type="button" className="btn" onClick={() => setOpen(false)}>Annuler</button><button type="submit" className="btn primary" disabled={!form.exportTypes.length}><Save size={15} /> Enregistrer</button></div>
+      <div className="schedule-editor-footer"><button type="button" className="btn" onClick={() => setOpen(false)}>Annuler</button><Can permission="planning.manage"><button type="submit" className="btn primary" disabled={!form.exportTypes.length}><Save size={15} /> Enregistrer</button></Can></div>
     </form></div>}
   </section>;
 }

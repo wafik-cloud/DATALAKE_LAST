@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import { authRoutes } from './routes/authRoutes';
+import accessRoutes from './routes/admin/accessRoutes';
+import { authenticate, recordActivity } from './middleware/requireAdmin';
 import { env } from './config/env';
 import { minioStorageService } from './services/minioStorageService';
 import { connectDatabase } from './lib/prisma';
@@ -11,15 +14,28 @@ import dashboardRoutes from './routes/admin/dashboardRoutes';
 import maintenanceRoutes from './routes/admin/maintenanceRoutes';
 import { startMultiScheduleRegistry } from './services/multiScheduleService';
 
-const app = express();
+export const app = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.APP_PUBLIC_URL || 'http://localhost:5173,http://localhost:5174,http://172.16.10.101:5174').split(',').map(s => s.trim());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use((req, res, next) => {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.header('Origin') && !allowedOrigins.includes(req.header('Origin')!)) {
+    res.status(403).json({ error: 'Origine non autorisée' }); return;
+  }
+  next();
+});
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'datalake-last-api', version: '0.3.0' });
 });
 
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', authenticate, recordActivity, (_req, res, next) => {
+  if (res.locals.user.mustChangePassword) { res.status(403).json({ error: 'Veuillez changer votre mot de passe initial.', code: 'PASSWORD_CHANGE_REQUIRED' }); return; }
+  next();
+});
+app.use('/api/admin/access', accessRoutes);
 app.use('/api/admin/dashboard', dashboardRoutes);
 app.use('/api/admin/storage', storageRoutes);
 app.use('/api/admin/pelagic', pelagicRoutes);
@@ -51,6 +67,11 @@ async function bootstrap() {
     console.error('[db] Impossible de démarrer le scheduler Pelagic — base indisponible');
   }
 
+  // Identity management stays available while the storage service is unavailable.
+  app.listen(env.port, () => {
+    console.log(`[api] DATALAKE_LAST API écoute sur le port ${env.port}`);
+  });
+
   try {
     await minioStorageService.initializeBucket();
     console.log(`[minio] Bucket prêt: ${env.minio.bucket}`);
@@ -61,12 +82,14 @@ async function bootstrap() {
     );
   }
 
-  app.listen(env.port, () => {
-    console.log(`[api] DATALAKE_LAST API écoute sur le port ${env.port}`);
-  });
 }
 
-bootstrap().catch((error) => {
+app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[api] Erreur interne', error instanceof Error ? error.name : 'unknown');
+  res.status(500).json({ error: 'Une erreur interne est survenue.' });
+});
+
+if (require.main === module) bootstrap().catch((error) => {
   console.error('[api] Démarrage impossible:', error);
   process.exit(1);
 });

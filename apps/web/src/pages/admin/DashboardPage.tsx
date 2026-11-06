@@ -1,3 +1,4 @@
+import { Can } from '../../lib/auth';
 import { useEffect, useState } from 'react';
 import { Database, Radio, RefreshCw, CheckCircle2, AlertTriangle, CalendarClock, MapPinned, ShipWheel, Activity } from 'lucide-react';
 import { adminApi } from '../../api/client';
@@ -58,9 +59,9 @@ export default function DashboardPage() {
         subtitle="Couverture, acquisitions et état opérationnel des données PDS"
         actions={(
           <>
-            <button type="button" className="btn" onClick={() => runTest('minio')}>Tester MinIO</button>
-            <button type="button" className="btn" onClick={() => runTest('pelagic')}>Tester Pelagic</button>
-            <button type="button" className="btn primary" onClick={syncNow}>Sync maintenant</button>
+            <Can permission="settings.manage"><button type="button" className="btn" onClick={() => runTest('minio')}>Tester MinIO</button></Can>
+            <Can permission="settings.manage"><button type="button" className="btn" onClick={() => runTest('pelagic')}>Tester Pelagic</button></Can>
+            <Can permission="imports.run"><button type="button" className="btn primary" onClick={syncNow}>Sync maintenant</button></Can>
             <a className="btn" href={data.minio.consoleUrl} target="_blank" rel="noreferrer">Console MinIO</a>
           </>
         )}

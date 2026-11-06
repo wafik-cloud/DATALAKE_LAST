@@ -1,3 +1,7 @@
+import { useEffect } from 'react';
+import { api } from '../api/client';
+import { useAuth, screenPermissions } from '../lib/auth';
+import type { LucideIcon } from 'lucide-react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -25,7 +29,8 @@ const topModules = [
   { to: '/admin/maintenance', label: 'Maintenance' },
 ];
 
-const sidebarGroups = [
+const sidebarGroups: { title: string; items: { to: string; label: string; icon: LucideIcon; end?: boolean }[] }[] = [
+  { title: 'Administration', items: [ { to: '/admin/access', label: 'Utilisateurs & accès', icon: ShieldCheck, end: false }, { to: '/admin/account', label: 'Mon compte & sécurité', icon: User, end: false } ] },
   {
     title: 'Bureau',
     items: [
@@ -54,6 +59,8 @@ const sidebarGroups = [
 
 function pageTitle(pathname: string): string {
   const map: Record<string, string> = {
+    '/admin/access': 'Utilisateurs & accès',
+    '/admin/account': 'Mon compte & sécurité',
     '/admin': 'Tableau de bord',
     '/admin/planning': 'Planification & imports',
     '/admin/jobs': 'Historique détaillé',
@@ -70,7 +77,10 @@ function pageTitle(pathname: string): string {
 export default function AdminLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const user = localStorage.getItem('adminUser') || 'admin';
+  const { user: account, can, refresh } = useAuth();
+  const user = account?.name || '';
+  useEffect(() => { void api.post('/api/auth/activity', { page: pathname }).catch(() => {}); }, [pathname]);
+  const visible = (to: string) => !account?.mustChangePassword && (to === '/admin/access' ? account?.isAdmin : !screenPermissions[to] || can(screenPermissions[to]));
 
   return (
     <div className="erp-app">
@@ -84,7 +94,7 @@ export default function AdminLayout() {
             </div>
           </div>
           <nav className="erp-topnav">
-            {topModules.map(({ to, label, end }) => (
+            {topModules.filter(item => visible(item.to)).map(({ to, label, end }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -102,8 +112,9 @@ export default function AdminLayout() {
             type="button"
             className="erp-icon-btn"
             title="Déconnexion"
-            onClick={() => {
-              localStorage.removeItem('adminApiKey');
+            onClick={async () => {
+              await api.post('/api/auth/logout');
+              await refresh();
               navigate('/login');
             }}
           >
@@ -114,10 +125,10 @@ export default function AdminLayout() {
 
       <div className="erp-layout">
         <aside className="erp-sidebar">
-          {sidebarGroups.map((group) => (
+          {sidebarGroups.filter(group => group.items.some(item => item.to === '/admin/account' || visible(item.to))).map((group) => (
             <div key={group.title} className="erp-sidebar-group">
               <h3 className="erp-sidebar-title">{group.title}</h3>
-              {group.items.map(({ to, label, icon: Icon, end }) => (
+              {group.items.filter(item => item.to === '/admin/account' || visible(item.to)).map(({ to, label, icon: Icon, end }) => (
                 <NavLink
                   key={to}
                   to={to}

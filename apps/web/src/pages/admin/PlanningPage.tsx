@@ -93,33 +93,49 @@ export default function PlanningPage() {
   const [importingKey, setImportingKey] = useState<string | null>(null);
   const [savingIntervalKey, setSavingIntervalKey] = useState<string | null>(null);
   const [bulkInterval, setBulkInterval] = useState(7);
+  const [coverageError, setCoverageError] = useState<string | null>(null);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
     try {
-      const [monthsRes, scheduleRes] = await Promise.all([
+      const [monthsResult, scheduleResult] = await Promise.allSettled([
         adminApi.pelagicMonths(),
         adminApi.pelagicSchedule(),
       ]);
-      setMonths(monthsRes.data.months);
-      setYears(monthsRes.data.years);
-      const s = scheduleRes.data;
-      const nextSchedule = {
-        enabled: s.enabled,
-        time: s.time,
-        timezone: s.timezone,
-        intervalDays: s.intervalDays,
-        description: s.description,
-        nextRunAt: s.scheduler?.nextRunAt ?? null,
-        schedulerActive: s.scheduler?.active ?? false,
-        lastAutomaticSyncAt: s.lastAutomaticSync?.at ?? null,
-        lastAutomaticSyncDetails: s.lastAutomaticSync?.details ?? null,
-        runningJobs: s.runningJobs ?? 0,
-      };
-      setSchedule(nextSchedule);
-      setDraft(nextSchedule);
-      if (selectedYear === 'all' && monthsRes.data.years.length) {
-        setSelectedYear(monthsRes.data.years[monthsRes.data.years.length - 1]);
+      if (monthsResult.status === 'fulfilled') {
+        const overview = monthsResult.value.data;
+        setMonths(overview.months);
+        setYears(overview.years);
+        setCoverageError(null);
+        if (months.length === 0 && selectedYear === 'all' && overview.years.length) {
+          setSelectedYear(overview.years[overview.years.length - 1]);
+        }
+      } else {
+        setMonths([]);
+        setYears([]);
+        setCoverageError('Impossible de vérifier la couverture des fichiers. Vérifiez la disponibilité de MinIO, puis cliquez sur Actualiser.');
+      }
+      if (scheduleResult.status === 'fulfilled') {
+        const s = scheduleResult.value.data;
+        const nextSchedule = {
+          enabled: s.enabled,
+          time: s.time,
+          timezone: s.timezone,
+          intervalDays: s.intervalDays,
+          description: s.description,
+          nextRunAt: s.scheduler?.nextRunAt ?? null,
+          schedulerActive: s.scheduler?.active ?? false,
+          lastAutomaticSyncAt: s.lastAutomaticSync?.at ?? null,
+          lastAutomaticSyncDetails: s.lastAutomaticSync?.details ?? null,
+          runningJobs: s.runningJobs ?? 0,
+        };
+        setSchedule(nextSchedule);
+        setDraft(nextSchedule);
+        setScheduleError(null);
+      } else {
+        setDraft(null);
+        setScheduleError('Impossible de charger la planification. Cliquez sur Actualiser pour réessayer.');
       }
     } finally {
       setLoading(false);
@@ -275,7 +291,8 @@ export default function PlanningPage() {
 
       <MultiSchedulesPanel />
 
-      <section className="card schedule-card fade-in-up">
+      {scheduleError && <p className="alert" role="alert">{scheduleError}</p>}
+      {!scheduleError && <section className="card schedule-card fade-in-up">
         <div className="daily-automation">
           <header className="daily-automation-header">
             <div className="daily-automation-title">
@@ -347,9 +364,9 @@ export default function PlanningPage() {
           </p>
         )}
 
-      </section>
+      </section>}
 
-      <div className="planning-stats fade-in-up">
+      {!coverageError && <div className="planning-stats fade-in-up">
         <div className="mini-stat success">
           <Gauge size={18} />
           <span><strong>{stats.coverage}%</strong> de couverture temporelle</span>
@@ -366,7 +383,7 @@ export default function PlanningPage() {
           <CircleDashed size={18} />
           <span><strong>{stats.missingDays}</strong> jours à acquérir</span>
         </div>
-      </div>
+      </div>}
 
       <section className="card months-card fade-in-up">
         <div className="months-toolbar">
@@ -381,16 +398,17 @@ export default function PlanningPage() {
                 {INTERVAL_OPTIONS.map((n) => <option key={n} value={n}>{n} j</option>)}
               </select>
             </label>
-            <Can permission="planning.manage"><button type="button" className="btn sm" onClick={applyBulkInterval}>
+            <Can permission="planning.manage"><button type="button" className="btn sm" onClick={applyBulkInterval} disabled={Boolean(coverageError)}>
               <Save size={14} /> Appliquer à la sélection
             </button></Can>
-            <select value={String(selectedYear)} onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}>
+            <select aria-label="Année de couverture" disabled={Boolean(coverageError)} value={String(selectedYear)} onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}>
               <option value="all">Toutes les années</option>
               {years.map((year) => <option key={year} value={year}>{year}</option>)}
             </select>
           </div>
         </div>
 
+        {coverageError && <p className="alert" role="alert">{coverageError}</p>}
         <p className="section-subtitle">
           Une journée correspond à une période complète de minuit à minuit ou de {schedule.time} à {schedule.time} le lendemain ({schedule.timezone}).
           Les périodes du cron sont rattachées à leur date de début. La période en cours n’est pas comptée comme manquante.
@@ -411,6 +429,7 @@ export default function PlanningPage() {
               </tr>
             </thead>
             <tbody>
+              {filteredMonths.length === 0 && <tr><td colSpan={7}>{coverageError ? 'Couverture indisponible — aucune lacune ne peut être calculée tant que les fichiers ne sont pas accessibles.' : 'Aucune période à afficher pour cette sélection.'}</td></tr>}
               {filteredMonths.map((month) => {
                 const meta = statusMeta(month.status);
                 const Icon = meta.icon;

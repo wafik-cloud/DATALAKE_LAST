@@ -87,7 +87,7 @@ export default function AdminLayout() {
       <header className="erp-topbar">
         <div className="erp-topbar-left">
           <div className="erp-app-logo">
-            <img src="/inrh-logo.svg" alt="INRH" className="erp-logo-img" />
+            <img src="/inrh-logo-white.png" alt="INRH" className="erp-logo-img" />
             <div>
               <strong>DATALAKE</strong>
               <small>INRH — Données halieutiques</small>

@@ -108,3 +108,13 @@ Le menu **Administration → Utilisateurs & accès** permet de créer et désact
 Configurer `APP_PUBLIC_URL` avec l’URL exacte du frontend, et `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASSWORD` pour les emails. SMTP exige TLS (465 ou STARTTLS). Les liens de récupération expirent après 30 minutes et sont à usage unique ; la récupération ferme les sessions existantes. En HTTPS, activer `COOKIE_SECURE=true`. Sans SMTP, la page Administration signale que les envois ne sont pas configurés.
 
 Vérification des parcours d’authentification avec une **base isolée vide** : appliquer les migrations sur cette base, puis exécuter les tests API avec `DATABASE_URL` et `AUTH_TEST_DATABASE_URL` désignant cette même base. Ces tests créent leurs propres comptes et ne doivent jamais viser la production. L’envoi SMTP y est simulé ; le reste du parcours utilise PostgreSQL et HTTP réels.
+
+
+### Logo institutionnel INRH
+
+Les images `apps/web/public/inrh-logo.png` et `inrh-logo-white.png` sont les fichiers originaux utilisés dans l’en-tête du site officiel https://inrh.ma/, récupérés le 6 novembre 2026 sans modification :
+
+- https://inrh.ma/storage/2025/02/logo-inrh-new-black.png
+- https://inrh.ma/storage/2025/02/inrh_white_logo.png
+
+Leurs proportions et leurs textes sont conservés. La variante blanche est utilisée sur les fonds bleus.

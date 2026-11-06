@@ -111,10 +111,9 @@ h1, h2, h3 {
 }
 
 .erp-logo-img {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  background: #fff;
+  width: 145px;
+  height: 34px;
+  flex-shrink: 0;
   object-fit: contain;
 }
 
@@ -1566,19 +1565,17 @@ input:focus, select:focus {
 
 .inrh-logo-wrap {
   flex-shrink: 0;
-  width: 72px;
-  height: 72px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid var(--erp-border);
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 457 / 85;
   display: grid;
   place-items: center;
 }
 
 .inrh-brand-login .inrh-logo-wrap {
-  width: 88px;
-  height: 88px;
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 804 / 188;
 }
 
 .inrh-logo {
@@ -1653,9 +1650,8 @@ input:focus, select:focus {
 }
 
 .login-card-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
-.login-card-brand .inrh-logo-wrap { width: 66px; height: 66px; border: 0; }
-.login-card-brand strong { color: var(--erp-primary-dark); font-size: 20px; letter-spacing: 1px; }
-.login-card-brand p { margin: 5px 0 0; color: var(--erp-text-muted); font-size: 12px; line-height: 1.5; }
+.login-card-brand .inrh-brand-compact { width: 100%; }
+.login-card-brand .inrh-logo-wrap { width: 100%; max-width: 360px; }
 .login-card .login-field { display: flex; flex-direction: column; align-items: stretch; gap: 8px; font-size: 13px; font-weight: 600; }
 .login-card .login-field input { width: 100%; min-width: 0; height: 46px; padding: 11px 13px; border: 1px solid #ced9e4; border-radius: 7px; background: #fff; color: var(--erp-text); font: inherit; font-weight: 400; transition: border-color .15s, box-shadow .15s; }
 .login-card .login-field input:focus { outline: none; border-color: var(--erp-primary); box-shadow: 0 0 0 3px rgba(74, 120, 165, .15); }

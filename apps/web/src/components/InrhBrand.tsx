@@ -18,16 +18,10 @@ export default function InrhBrand({
     <div className={`inrh-brand inrh-brand-${variant}`}>
       <div className="inrh-logo-wrap">
         <img
-          src="/inrh-logo.svg"
+          src={isLogin ? '/inrh-logo-white.png' : '/inrh-logo.png'}
           alt="Logo INRH — Institut National de Recherche Halieutique"
           className="inrh-logo"
-          onError={(e) => {
-            const img = e.currentTarget;
-            if (!img.dataset.fallback) {
-              img.dataset.fallback = '1';
-              img.src = '/inrh-logo.png';
-            }
-          }}
+
         />
       </div>
       {!isCompact && (

@@ -29,7 +29,6 @@ export default function LoginPage() {
   return <div className="login-page fade-in"><div className="login-shell fade-in-up"><div className="login-hero"><InrhBrand variant="login" title="PDS VESSEL TRACKING" /><p className="login-hero-text">Votre espace de suivi et de gestion des données halieutiques.</p><p className="login-hero-text">Accès personnel · Droits attribués · Activités tracées</p></div><form className="login-card" onSubmit={submit}>
     <div className="login-card-brand">
       <InrhBrand variant="compact" />
-      <div><strong>INRH</strong><p>Institut National de Recherche Halieutique</p></div>
     </div>
     <h2>{mode === 'login' ? 'Connexion à la plateforme' : mode === 'forgot' ? 'Mot de passe oublié' : mode === 'setup' ? 'Premier administrateur' : 'Nouveau mot de passe'}</h2>
     {mode === 'setup' && <>{field('name', 'Nom complet')}{field('email', 'Email déclaré', 'email')}{field('key', 'Clé d’initialisation administrateur', 'password')}</>}

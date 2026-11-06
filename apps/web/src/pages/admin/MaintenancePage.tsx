@@ -52,6 +52,7 @@ type MaintenanceSummary = {
     root: DiskMetric | null;
     dataLake: DiskMetric | null;
     filesystems: DiskMetric[];
+    observedDisk?: { label: string; source: string; status: 'mounted' | 'unavailable'; readOnly: boolean; metric: DiskMetric | null } | null;
   };
   process: {
     pid: number;
@@ -138,9 +139,10 @@ export default function MaintenancePage() {
 
   const rootDisk = summary.storage.root;
   const dataLakeDisk = summary.storage.dataLake;
+  const observedDisk = summary.storage.observedDisk;
   const mainStorageDisk = dataLakeDisk || rootDisk;
   const mainStorageTone = dataLakeDisk ? dataLakeDiskTone : rootDiskTone;
-  const hasCriticalResource = [cpuTone, memoryTone, rootDiskTone, dataLakeDiskTone].includes('danger');
+  const hasCriticalResource = [cpuTone, memoryTone, rootDiskTone, dataLakeDiskTone].includes('danger') || observedDisk?.status === 'unavailable' || (observedDisk?.metric?.usedPercent || 0) >= 90;
 
   return (
     <div className="maintenance-page">
@@ -172,7 +174,7 @@ export default function MaintenancePage() {
         />
         <StatCard
           icon={<HardDrive size={20} />}
-          label={dataLakeDisk ? 'Stockage données' : 'Stockage racine'}
+          label={dataLakeDisk ? 'Stockage données actif' : 'Stockage racine'}
           value={mainStorageDisk ? `${mainStorageDisk.usedPercent} %` : 'Indisponible'}
           hint={mainStorageDisk ? `${formatBytes(mainStorageDisk.availableBytes)} libres sur ${mainStorageDisk.mount}` : 'df indisponible'}
           tone={mainStorageDisk ? mainStorageTone : 'warning'}
@@ -223,11 +225,23 @@ export default function MaintenancePage() {
             {dataLakeDisk && (
               <div>
                 <div className="maintenance-row">
-                  <span><HardDrive size={15} /> Stockage données</span>
+                  <span><HardDrive size={15} /> Stockage données actif</span>
                   <strong>{formatBytes(dataLakeDisk.usedBytes)}</strong>
                 </div>
                 <MetricBar value={dataLakeDisk.usedPercent} tone={dataLakeDiskTone} />
                 <small>{formatBytes(dataLakeDisk.availableBytes)} libres sur {formatBytes(dataLakeDisk.sizeBytes)}</small>
+              </div>
+            )}
+            {observedDisk && (
+              <div>
+                <div className="maintenance-row">
+                  <span><HardDrive size={15} /> {observedDisk.label}</span>
+                  <strong>{observedDisk.metric ? formatBytes(observedDisk.metric.usedBytes) : 'Indisponible'}</strong>
+                </div>
+                {observedDisk.metric ? <>
+                  <MetricBar value={observedDisk.metric.usedPercent} tone={toneForPercent(observedDisk.metric.usedPercent)} />
+                  <small>{formatBytes(observedDisk.metric.availableBytes)} libres sur {formatBytes(observedDisk.metric.sizeBytes)} · {observedDisk.readOnly ? 'Monté en lecture seule' : 'Lecture et écriture'}</small>
+                </> : <small>Le disque n’est pas monté ou n’est pas accessible.</small>}
               </div>
             )}
           </div>

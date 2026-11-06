@@ -118,3 +118,10 @@ Les images `apps/web/public/inrh-logo.png` et `inrh-logo-white.png` sont les fic
 - https://inrh.ma/storage/2025/02/inrh_white_logo.png
 
 Leurs proportions et leurs textes sont conservés. La variante blanche est utilisée sur les fonds bleus.
+
+
+### Afficher un disque supplémentaire dans Maintenance
+
+La supervision distingue le stockage actif (`/datalake`) du disque supplémentaire, qui reste en lecture seule. Configurer `DATALAKE_OBSERVED_DISK_DIR` avec le point de montage hôte, `OBSERVED_DISK_SOURCE` avec le périphérique attendu (ex. `/dev/sdb1`) et `OBSERVED_DISK_LABEL` avec son libellé (ex. `Disque de 7 To`). Monter le disque sur l’hôte avant de recréer le conteneur API depuis Git ; l’interface affichera aussi sa capacité et son mode d’accès. Ne pas réorienter les services de données vers ce volume pour une simple observation.
+
+L’API vérifie la source du montage avant d’afficher sa capacité : un répertoire vide sur le disque système ne doit pas être présenté comme le disque supplémentaire. Si le montage est absent ou incorrect, le disque apparaît comme indisponible et les métriques des autres volumes restent visibles. Ce réglage ne rend pas le montage hôte persistant au redémarrage.

@@ -92,6 +92,7 @@ services:
       - "${API_PORT:-5001}:5001"
     volumes:
       - ${DATALAKE_ROOT_DIR:-datalake_observed}:/datalake:ro
+      - ${DATALAKE_OBSERVED_DISK_DIR:-observed_disk}:/observed-disk:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,3 +122,4 @@ volumes:
   postgres_data:
   minio_data:
   datalake_observed:
+  observed_disk:

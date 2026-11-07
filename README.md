@@ -18,7 +18,7 @@ Projet créé **from scratch** — indépendant de `inrh_data_platform-last`.
 ## Démarrage rapide (infrastructure + API + UI)
 
 ```bash
-cd /Users/M.WAFIK/CSID_projects/DATALAKE_LAST
+cd /home/inrh/DATALAKE_LAST
 cp .env.example .env
 # Éditer .env : mots de passe + ADMIN_API_KEY + PELAGIC_API_TOKEN/SECRET
 

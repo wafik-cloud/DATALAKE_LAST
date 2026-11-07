@@ -8,7 +8,7 @@
 ## Démarrage
 
 ```bash
-cd /Users/M.WAFIK/CSID_projects/DATALAKE_LAST
+cd /home/inrh/DATALAKE_LAST
 cp .env.example .env
 # Éditer MINIO_ROOT_PASSWORD, POSTGRES_PASSWORD, ADMIN_API_KEY
 

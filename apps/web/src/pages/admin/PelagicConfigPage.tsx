@@ -70,13 +70,13 @@ export default function PelagicConfigPage() {
           (jamais dans l'interface, jamais dans Git).
         </p>
         <ol className="setup-steps">
-          <li>Ouvrez <code>/Users/M.WAFIK/CSID_projects/DATALAKE_LAST/.env</code></li>
+          <li>Sur le serveur de production, ouvrez <code>/home/inrh/DATALAKE_LAST/.env</code></li>
           <li>Renseignez :
             <pre>{`PELAGIC_API_TOKEN=votre_token
 PELAGIC_API_SECRET=votre_secret`}</pre>
           </li>
-          <li>Redémarrez l'API :
-            <pre>docker compose restart api</pre>
+          <li>Depuis <code>/home/inrh/DATALAKE_LAST</code>, appliquez la configuration à l'API :
+            <pre>docker compose up -d --no-deps --force-recreate api</pre>
           </li>
           <li>Cliquez <strong>Tester la connexion</strong> ci-dessous</li>
         </ol>

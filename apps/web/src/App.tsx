@@ -7,7 +7,6 @@ import PelagicConfigPage from './pages/admin/PelagicConfigPage';
 import PlanningPage from './pages/admin/PlanningPage';
 import SyncPage from './pages/admin/SyncPage';
 import FilesPage from './pages/admin/FilesPage';
-import QualityControlPage from './pages/admin/QualityControlPage';
 import MaintenancePage from './pages/admin/MaintenancePage';
 
 import { AuthProvider, useAuth, screenPermissions } from './lib/auth';
@@ -49,7 +48,7 @@ export default function App() {
         <Route path="admin/sync" element={<SyncPage />} />
         <Route path="admin/jobs" element={<Navigate to="/admin/planning" replace />} />
         <Route path="admin/files" element={<FilesPage />} />
-        <Route path="admin/quality-control" element={<QualityControlPage />} />
+        <Route path="admin/quality-control" element={<Navigate to="/admin/files" replace />} />
         <Route path="admin/maintenance" element={<MaintenancePage />} />
       </Route>
     </Routes></AuthProvider>

@@ -57,7 +57,7 @@ export const env = {
     bucket: process.env.MINIO_BUCKET || 'pelagic-data',
     region: process.env.MINIO_REGION || 'us-east-1',
     publicEndpoint: process.env.MINIO_PUBLIC_ENDPOINT || 'http://localhost:9000',
-    consoleUrl: process.env.MINIO_CONSOLE_URL || 'http://localhost:9001',
+    consoleUrl: process.env.MINIO_CONSOLE_URL || 'http://172.16.10.101:9001',
     useSSL: process.env.MINIO_USE_SSL === 'true' || minioEndpoint.useSSL,
   },
   pelagic: {

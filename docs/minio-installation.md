@@ -22,7 +22,7 @@ docker compose logs -f minio
 | Service | URL |
 |---------|-----|
 | API S3 | http://localhost:9000 |
-| Console MinIO | http://localhost:9001 |
+| Console MinIO | http://172.16.10.101:9001 |
 | API applicative | http://localhost:5001 |
 
 ## Vérification

@@ -35,7 +35,7 @@ docker compose up -d --build
 
 L'URL de l'UI s'affiche à la fin (variable `WEB_PORT` dans `.env`).
 - **API** : http://localhost:5001
-- **Console MinIO** : http://localhost:9001
+- **Console MinIO** : http://172.16.10.101:9001
 
 ## Structure du dépôt (cible)
 

@@ -17,6 +17,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 export const useAuth = () => useContext(Context);
 export const screenPermissions: Record<string, string> = {
-  '/admin': 'dashboard', '/admin/planning': 'planning', '/admin/jobs': 'jobs', '/admin/files': 'files', '/admin/quality-control': 'quality', '/admin/sync': 'sync', '/admin/minio': 'minio', '/admin/pelagic': 'pelagic', '/admin/maintenance': 'maintenance',
+  '/admin': 'dashboard', '/admin/planning': 'planning', '/admin/files': 'files', '/admin/quality-control': 'quality', '/admin/sync': 'sync', '/admin/minio': 'minio', '/admin/pelagic': 'pelagic', '/admin/maintenance': 'maintenance',
 };
 export function Can({ permission, children }: { permission: string; children: React.ReactNode }) { return useAuth().can(permission) ? <>{children}</> : null; }

@@ -8,7 +8,6 @@ import {
   Database,
   Radio,
   RefreshCw,
-  History,
   FolderOpen,
   LogOut,
   CalendarClock,
@@ -20,7 +19,6 @@ import {
 const topModules = [
   { to: '/admin', label: 'Bureau', end: true },
   { to: '/admin/planning', label: 'Planification' },
-  { to: '/admin/jobs', label: 'Historique' },
   { to: '/admin/files', label: 'Fichiers' },
   { to: '/admin/quality-control', label: 'Qualité' },
   { to: '/admin/sync', label: 'Import' },
@@ -41,7 +39,6 @@ const sidebarGroups: { title: string; items: { to: string; label: string; icon: 
     title: 'Synchronisation',
     items: [
       { to: '/admin/planning', label: 'Planification & imports', icon: CalendarClock },
-      { to: '/admin/jobs', label: 'Historique détaillé', icon: History },
       { to: '/admin/sync', label: 'Import manuel', icon: RefreshCw },
       { to: '/admin/files', label: 'Fichiers stockés', icon: FolderOpen },
       { to: '/admin/quality-control', label: 'Contrôle qualité CSV', icon: ShieldCheck },
@@ -63,7 +60,6 @@ function pageTitle(pathname: string): string {
     '/admin/account': 'Mon compte & sécurité',
     '/admin': 'Tableau de bord',
     '/admin/planning': 'Planification & imports',
-    '/admin/jobs': 'Historique détaillé',
     '/admin/files': 'Fichiers stockés',
     '/admin/quality-control': 'Contrôle qualité CSV',
     '/admin/sync': 'Import manuel',

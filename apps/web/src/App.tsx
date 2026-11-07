@@ -6,7 +6,6 @@ import MinioConfigPage from './pages/admin/MinioConfigPage';
 import PelagicConfigPage from './pages/admin/PelagicConfigPage';
 import PlanningPage from './pages/admin/PlanningPage';
 import SyncPage from './pages/admin/SyncPage';
-import JobsPage from './pages/admin/JobsPage';
 import FilesPage from './pages/admin/FilesPage';
 import QualityControlPage from './pages/admin/QualityControlPage';
 import MaintenancePage from './pages/admin/MaintenancePage';
@@ -48,7 +47,7 @@ export default function App() {
         <Route path="admin/pelagic" element={<PelagicConfigPage />} />
         <Route path="admin/planning" element={<PlanningPage />} />
         <Route path="admin/sync" element={<SyncPage />} />
-        <Route path="admin/jobs" element={<JobsPage />} />
+        <Route path="admin/jobs" element={<Navigate to="/admin/planning" replace />} />
         <Route path="admin/files" element={<FilesPage />} />
         <Route path="admin/quality-control" element={<QualityControlPage />} />
         <Route path="admin/maintenance" element={<MaintenancePage />} />

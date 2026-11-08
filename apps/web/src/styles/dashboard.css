@@ -1,0 +1,86 @@
+.scientific-dashboard { --dash-ink: #203d58; --dash-muted: #718397; --dash-line: #e3ebf2; display: flex; flex-direction: column; gap: 16px; }
+.scientific-dashboard > .page-header { align-items: center; margin: 0; padding: 18px 20px; border: 1px solid #dce7f1; border-radius: 12px; background: linear-gradient(110deg, #edf5fc, #fff 75%); }
+.scientific-dashboard .page-header h1 { color: var(--dash-ink); font-size: 24px; letter-spacing: -.5px; }
+.scientific-dashboard .page-header p { color: #657b90; line-height: 1.5; }
+.scientific-dashboard .actions { justify-content: flex-end; gap: 7px; }
+.scientific-dashboard .btn { border-radius: 7px; min-height: 33px; box-shadow: 0 1px 2px #2344670a; }
+.scientific-dashboard .dashboard-services.grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.scientific-dashboard .stat-card { min-width: 0; align-items: center; gap: 12px; padding: 14px 16px; margin: 0; border: 1px solid var(--dash-line); border-radius: 10px; box-shadow: 0 2px 7px #23446705; }
+.scientific-dashboard .stat-card > div:last-child { min-width: 0; }
+.scientific-dashboard .stat-icon { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 10px; }
+.scientific-dashboard .stat-label { margin: 0 0 3px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #728294; font-weight: 650; }
+.scientific-dashboard .stat-value { margin: 0; font-size: 17px; line-height: 1.3; color: var(--dash-ink); font-weight: 650; }
+.scientific-dashboard .stat-hint { margin: 4px 0 0; font-size: 10px; color: var(--dash-muted); overflow-wrap: anywhere; }
+.scientific-dashboard .tone-success .stat-value { color: #277455; }
+.scientific-dashboard .tone-warning .stat-value { color: #9b681d; }
+.scientific-dashboard .tone-danger .stat-value { color: #b83b47; }
+.scientific-dashboard .science-kpi-grid { gap: 0; margin: 0; padding: 18px 0; border: 1px solid var(--dash-line); border-radius: 12px; background: linear-gradient(115deg, #f7fbff, #fff); box-shadow: 0 2px 7px #23446705; }
+.scientific-dashboard .science-kpi { min-width: 0; min-height: 0; padding: 0 18px; gap: 10px; border: 0; background: transparent; }
+.scientific-dashboard .science-kpi + .science-kpi { border-left: 1px solid var(--dash-line); }
+.scientific-dashboard .science-kpi > svg { flex-shrink: 0; margin-top: 5px; color: #6a90b6; }
+.scientific-dashboard .science-kpi strong { color: var(--dash-ink); font-size: clamp(18px, 1.7vw, 26px); line-height: 1.2; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
+.scientific-dashboard .science-kpi strong.dashboard-date { font-size: clamp(15px, 1.3vw, 21px); letter-spacing: -.3px; }
+.scientific-dashboard .science-kpi span { color: #3d6589; font-size: 11px; margin-top: 6px; }
+.scientific-dashboard .science-kpi small { color: var(--dash-muted); font-size: 9.5px; line-height: 1.5; }
+.scientific-dashboard .dashboard-analysis-grid { gap: 16px; margin: 0; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); }
+.scientific-dashboard .dashboard-panel { display: flex; flex-direction: column; padding: 18px 20px 0; border: 1px solid var(--dash-line); border-radius: 12px; box-shadow: 0 3px 12px #23446706; }
+.scientific-dashboard .dashboard-panel-heading { align-items: flex-start; gap: 12px; margin: 0 0 18px; }
+.scientific-dashboard .dashboard-eyebrow { display: flex; gap: 5px; align-items: center; margin-bottom: 5px; color: #7990a5; font-size: 9px; font-weight: 650; letter-spacing: .1em; }
+.scientific-dashboard .dashboard-panel-heading h2 { color: var(--dash-ink); font-size: 15px; }
+.scientific-dashboard .dashboard-panel-heading p { margin: 5px 0 0; color: var(--dash-muted); font-size: 10.5px; }
+.scientific-dashboard .dashboard-panel-total { flex-shrink: 0; text-align: right; }
+.scientific-dashboard .dashboard-panel-total strong { display: block; font-size: 22px; font-weight: 650; letter-spacing: -.6px; color: #315e85; }
+.scientific-dashboard .dashboard-panel-total span { display: block; margin-top: 3px; font-size: 9px; color: var(--dash-muted); }
+.scientific-dashboard .dashboard-chart-body { display: flex; min-width: 0; gap: 8px; flex: 1; }
+.scientific-dashboard .dashboard-chart-axis { display: flex; flex-direction: column; justify-content: space-between; padding: 0 0 39px; min-width: 35px; color: #91a0af; font-size: 9px; }
+.scientific-dashboard .activity-chart { flex: 1; min-width: 0; min-height: 240px; padding: 0; gap: 10px; align-items: stretch; background: linear-gradient(to bottom, #e6edf5 1px, transparent 1px) 0 0 / 100% calc((100% - 39px) / 2); }
+.scientific-dashboard .activity-column { height: auto; min-height: 240px; flex: 1 0 42px; grid-template-rows: minmax(170px, 1fr) 15px 16px; gap: 4px; }
+.scientific-dashboard .activity-bar-wrap { min-height: 0; border-bottom: 1px solid #dce6ef; }
+.scientific-dashboard .activity-bar { width: min(35px, 70%); min-height: 0; border-radius: 5px 5px 0 0; background: linear-gradient(180deg, #659ac4, #32688f); box-shadow: inset 0 1px #ffffff40; transition: filter .15s; }
+.scientific-dashboard .activity-column:hover .activity-bar { filter: brightness(1.15); }
+.scientific-dashboard .activity-column strong { font-size: 10px; color: #395b79; font-weight: 600; }
+.scientific-dashboard .activity-column > span { font-size: 9px; color: var(--dash-muted); white-space: nowrap; }
+.scientific-dashboard .storage-breakdown { gap: 12px; padding: 0 0 16px; flex: 1; }
+.scientific-dashboard .dashboard-storage-row { --storage-color: #5086b2; }
+.scientific-dashboard .storage-trips { --storage-color: #4c9b91; }
+.scientific-dashboard .storage-previews { --storage-color: #9890c5; }
+.scientific-dashboard .storage-manifests { --storage-color: #afbdcc; }
+.scientific-dashboard .storage-errors { --storage-color: #d2a162; }
+.scientific-dashboard .storage-breakdown-head { align-items: center; font-size: 11px; }
+.scientific-dashboard .storage-breakdown-head strong { display: flex; align-items: center; gap: 6px; color: #405b73; font-weight: 600; }
+.scientific-dashboard .storage-breakdown-head strong i { width: 6px; height: 6px; border-radius: 2px; background: var(--storage-color); }
+.scientific-dashboard .storage-breakdown-head > span { color: #456078; font-size: 11px; font-weight: 600; }
+.scientific-dashboard .storage-breakdown-track { height: 5px; border-radius: 4px; background: #edf2f6; margin-top: 6px; }
+.scientific-dashboard .storage-breakdown-track i { min-width: 0; border-radius: 4px; background: var(--storage-color); }
+.scientific-dashboard .dashboard-storage-meta { display: flex; justify-content: space-between; color: #8797a7; font-size: 9px; margin-top: 4px; }
+.scientific-dashboard .dashboard-panel-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 0; margin-top: 14px; border-top: 1px solid var(--dash-line); font-size: 10px; color: #8395a6; }
+.scientific-dashboard .dashboard-panel-foot > span, .scientific-dashboard .dashboard-panel-foot a { display: inline-flex; align-items: center; gap: 5px; }
+.scientific-dashboard .dashboard-panel-foot a { color: #46779f; text-decoration: none; font-weight: 600; }
+.scientific-dashboard .dashboard-panel-foot a:hover { text-decoration: underline; }
+.scientific-dashboard .dashboard-panel-foot i { width: 6px; height: 6px; background: #5086b2; border-radius: 2px; }
+.scientific-dashboard .dashboard-empty { flex: 1; display: grid; place-items: center; min-height: 180px; color: var(--dash-muted); }
+@media (max-width: 1200px) {
+  .scientific-dashboard > .page-header { flex-wrap: wrap; gap: 12px; }
+  .scientific-dashboard .science-kpi { padding: 0 12px; gap: 7px; }
+  .scientific-dashboard .science-kpi > svg { display: none; }
+  .scientific-dashboard .dashboard-analysis-grid { grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr); }
+}
+@media (max-width: 900px) {
+  .scientific-dashboard .dashboard-services.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scientific-dashboard .science-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 0; }
+  .scientific-dashboard .science-kpi:nth-child(4) { border-left: 0; }
+  .scientific-dashboard .dashboard-analysis-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .scientific-dashboard > .page-header { padding: 14px; }
+  .scientific-dashboard .actions { justify-content: flex-start; }
+  .scientific-dashboard .science-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scientific-dashboard .science-kpi:nth-child(n) { border-left: 0; }
+  .scientific-dashboard .science-kpi:nth-child(even) { border-left: 1px solid var(--dash-line); }
+  .scientific-dashboard .stat-card { padding: 12px; gap: 8px; }
+  .scientific-dashboard .stat-value { font-size: 15px; }
+  .scientific-dashboard .stat-icon { width: 30px; height: 30px; flex-basis: 30px; }
+  .scientific-dashboard .dashboard-panel { padding: 14px 12px 0; }
+  .scientific-dashboard .dashboard-panel-heading { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .scientific-dashboard .activity-bar { transition: none; } }

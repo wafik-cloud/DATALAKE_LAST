@@ -2428,3 +2428,173 @@ input:focus, select:focus {
 .access-permissions input { accent-color:#167f85; }
 .access-form h3 { margin:0; }
 @media(max-width:800px) { .access-heading { align-items:flex-start; flex-direction:column; } .access-stats { grid-template-columns:1fr; } .access-form-grid,.access-permissions { grid-template-columns:1fr; } .access-toolbar { align-items:flex-start; flex-direction:column; } .access-modal { padding:20px; } .access-card { padding:16px; } }
+
+.account-password-form {
+  --password-card-padding: clamp(16px, 3vw, 28px);
+  padding: 0;
+  border-color: #dce6f0;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px #203c5510;
+}
+
+.account-password-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: var(--password-card-padding);
+  background: #f3f7fb;
+  border-bottom: 1px solid #e2eaf2;
+  border-radius: 13px 13px 0 0;
+}
+
+.account-password-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: #e3edf8;
+  color: var(--erp-primary-darker);
+}
+
+.account-password-header h2 {
+  margin: 0 0 4px;
+  color: #24364b;
+}
+
+.account-password-header p,
+.account-password-footer p {
+  margin: 0;
+  color: #52677d;
+  line-height: 1.5;
+}
+
+.account-password-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: var(--password-card-padding);
+}
+
+.account-password-field {
+  display: grid;
+  align-content: end;
+  gap: 7px;
+}
+
+.account-password-field label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.account-password-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  border: 1px solid #b6c6d8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.account-password-input:focus-within {
+  border-color: var(--erp-primary-dark);
+  box-shadow: 0 0 0 3px #4a78a530;
+}
+
+.account-password-input input {
+  min-height: 44px;
+  width: 100%;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  outline: none;
+  background: transparent;
+  color: #24364b;
+  font: inherit;
+  font-size: 16px;
+}
+
+.account-password-input button {
+  display: grid;
+  place-items: center;
+  margin: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #52677d;
+  cursor: pointer;
+}
+
+.account-password-input button:hover:not(:disabled) {
+  background: var(--erp-hover);
+  color: var(--erp-primary-darker);
+}
+
+.account-password-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px var(--password-card-padding);
+  border-top: 1px solid #e2eaf2;
+  border-radius: 0 0 13px 13px;
+  background: #f8fafc;
+}
+
+.account-password-footer p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-password-footer svg {
+  flex-shrink: 0;
+}
+
+.account-password-footer p svg {
+  color: var(--erp-primary-darker);
+}
+
+.btn.primary.account-password-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--erp-primary-darker);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: normal;
+}
+
+.btn.primary.account-password-submit:hover:not(:disabled) {
+  background: #1d4267;
+}
+
+.account-password-submit:focus-visible,
+.account-password-input button:focus-visible {
+  outline: 2px solid var(--erp-primary-dark);
+  outline-offset: 2px;
+}
+
+.account-password-error {
+  margin: 0 var(--password-card-padding) 16px;
+  padding: 10px 12px;
+  border: 1px solid #edbec0;
+  border-radius: 8px;
+  background: #fff4f4;
+  color: #8e292c;
+}
+
+@media (max-width: 700px) {
+  .account-password-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-password-submit {
+    width: 100%;
+  }
+}

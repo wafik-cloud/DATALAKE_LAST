@@ -1,17 +1,20 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { api } from '../api/client';
 import { useAuth } from '../lib/auth';
 import InrhBrand from '../components/InrhBrand';
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { state } = useLocation();
   const { refresh } = useAuth();
   const resetToken = new URLSearchParams(window.location.hash.slice(1)).get('reset');
   const [mode, setMode] = useState(resetToken ? 'reset' : 'login');
   const [setup, setSetup] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(
+    state?.passwordChanged === true ? 'Mot de passe modifié. Connectez-vous avec votre nouveau mot de passe.' : '',
+  );
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState({ login: '', password: '', confirm: '', email: '', name: '', key: '' });
   useEffect(() => { api.get('/api/auth/status').then(r => setSetup(r.data.setupRequired)).catch(() => setMessage('La plateforme est momentanément indisponible.')); }, []);

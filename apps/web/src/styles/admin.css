@@ -161,6 +161,28 @@ h1, h2, h3 {
   opacity: 0.9;
 }
 
+.erp-password-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.erp-password-link:hover,
+.erp-password-link:focus-visible,
+.erp-password-link.active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 640px) {
+  .erp-user-badge { display: none; }
+}
+
 .erp-icon-btn {
   background: transparent;
   border: none;

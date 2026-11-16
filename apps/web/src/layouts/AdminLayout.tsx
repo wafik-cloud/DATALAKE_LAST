@@ -10,6 +10,7 @@ import {
   RefreshCw,
   FolderOpen,
   LogOut,
+  KeyRound,
   CalendarClock,
   User,
   ShieldCheck,
@@ -71,7 +72,6 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { user: account, can, refresh } = useAuth();
-  const user = account?.name || '';
   useEffect(() => { void api.post('/api/auth/activity', { page: pathname }).catch(() => {}); }, [pathname]);
   const visible = (to: string) => !account?.mustChangePassword && (to === '/admin/access' ? account?.isAdmin : !screenPermissions[to] || can(screenPermissions[to]));
 
@@ -100,7 +100,11 @@ export default function AdminLayout() {
           </nav>
         </div>
         <div className="erp-topbar-right">
-          <span className="erp-user-badge"><User size={14} /> {user}</span>
+          <span className="erp-user-badge">{account?.name}</span>
+          <NavLink to="/admin/account" className="erp-password-link">
+            <KeyRound size={15} aria-hidden="true" />
+            <span>Mot de passe</span>
+          </NavLink>
           <button
             type="button"
             className="erp-icon-btn"
